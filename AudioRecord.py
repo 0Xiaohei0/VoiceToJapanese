@@ -15,14 +15,28 @@ RECORD_SECONDS = 5
 OUTPUT_FILENAME = "Output/output.mp3"
 
 PUSH_TO_RECORD_KEY = '7'
+NO_TRANSLATE_KEY = '0'
+SPEAKER_ID = '0'
+
+translate = True
 
 # Initialize PyAudio
 audio = pyaudio.PyAudio()
 
 while True:
+
     # Start recording when user presses "s" key
-    keyboard.wait('7')
-    print("Recording...")
+    a = keyboard.read_key()
+    if (a == NO_TRANSLATE_KEY):
+        translate = not translate
+        print(f"Translate = {translate}")
+        while (keyboard.is_pressed(NO_TRANSLATE_KEY)):
+            continue
+        continue
+    elif (a == PUSH_TO_RECORD_KEY):
+        print(f"Recording... (translate = {translate})")
+    else:
+        continue
 
     # Open audio stream
     stream = audio.open(format=FORMAT, channels=CHANNELS,
@@ -36,7 +50,7 @@ while True:
     while True:
         data = stream.read(CHUNK)
         frames.append(data)
-        if not keyboard.is_pressed('7'):
+        if not keyboard.is_pressed(PUSH_TO_RECORD_KEY):
             break
 
     # Stop recording and close audio stream
@@ -56,47 +70,54 @@ while True:
 
     # Send audio to whisper backend
     with open(OUTPUT_FILENAME, "rb") as file:
-        url = "http://localhost:9000/asr?task=transcribe&language=en&output=txt"
+        url = "http://localhost:9000/asr"
+        AudioLanguage = 'EN'
+        if (not translate):
+            AudioLanguage = 'JA'
+
+        params = {
+            'task': 'transcribe',
+            'language': AudioLanguage,
+            'output': 'txt'
+        }
         files = [
             ('audio_file', (OUTPUT_FILENAME, file, 'audio/mpeg'))
         ]
-        SpeechToTextResponse = requests.request("POST", url, files=files)
+        SpeechToTextResponse = requests.request(
+            "POST", url, params=params, files=files)
 
-        print(f'English: {SpeechToTextResponse.text}')
-        # if SpeechToTextResponse.status_code == 200:
-        #     print(SpeechToTextResponse)
-        # else:
-        #     print("Error: ", SpeechToTextResponse.status_code)
-        #     print(SpeechToTextResponse)
+        print(f'Input: {SpeechToTextResponse.text}')
 
-    token = os.environ.get("translation-service-api-token")
-    # Send text to translation service
-    headers = {
-        'Authorization': f'DeepL-Auth-Key {token}',
-        'Content-Type': 'application/x-www-form-urlencoded',
-    }
-    data = f'text={SpeechToTextResponse.text}&target_lang=JA'
+    text_output = SpeechToTextResponse.text
+    if (translate):
+        token = os.environ.get("translation-service-api-token")
+        # Send text to translation service
+        headers = {
+            'Authorization': f'DeepL-Auth-Key {token}',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+        data = f'text={SpeechToTextResponse.text}&target_lang=JA'
+        translationResponse = requests.post(
+            'https://api-free.deepl.com/v2/translate', headers=headers, data=data.encode('utf-8'))
 
-    translationResponse = requests.post(
-        'https://api-free.deepl.com/v2/translate', headers=headers, data=data)
+        translation = translationResponse.content.decode('utf-8')
+        text_output = json.loads(translation)['translations'][0]['text']
+        print(f'Japanese: {text_output}')
 
-    translation = translationResponse.content.decode('utf-8')
-    translation_text = json.loads(translation)['translations'][0]['text']
     text_file = open("sample.txt", "w", encoding='utf-8')
-    n = text_file.write(translation_text)
+    n = text_file.write(text_output)
     text_file.close()
-    print(f'Japanese: {translation_text}')
-    url = f"http://127.0.0.1:50021/audio_query?text={translation_text}&speaker=0"
+    url = f"http://127.0.0.1:50021/audio_query?text={text_output}&speaker={SPEAKER_ID}"
 
-    VoiceTextResponse = requests.request("POST", url, headers=headers)
+    VoiceTextResponse = requests.request("POST", url)
 
-    url = "http://127.0.0.1:50021/synthesis?speaker=0"
+    url = f"http://127.0.0.1:50021/synthesis?speaker={SPEAKER_ID}"
     headers = {
         'Content-Type': 'application/json'
     }
     payload = VoiceTextResponse
     AudioResponse = requests.request(
-        "POST", url, headers=headers, data=payload)
+        "POST", url, data=payload)
 
     with open("audioResponse.wav", "wb") as file:
         file.write(AudioResponse.content)
