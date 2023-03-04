@@ -61,12 +61,12 @@ while True:
         ]
         SpeechToTextResponse = requests.request("POST", url, files=files)
 
-        print(SpeechToTextResponse.text)
-        if SpeechToTextResponse.status_code == 200:
-            print(SpeechToTextResponse)
-        else:
-            print("Error: ", SpeechToTextResponse.status_code)
-            print(SpeechToTextResponse)
+        print(f'English: {SpeechToTextResponse.text}')
+        # if SpeechToTextResponse.status_code == 200:
+        #     print(SpeechToTextResponse)
+        # else:
+        #     print("Error: ", SpeechToTextResponse.status_code)
+        #     print(SpeechToTextResponse)
 
     token = os.environ.get("translation-service-api-token")
     # Send text to translation service
@@ -84,4 +84,19 @@ while True:
     text_file = open("sample.txt", "w", encoding='utf-8')
     n = text_file.write(translation_text)
     text_file.close()
+    print(f'Japanese: {translation_text}')
+    url = f"http://127.0.0.1:50021/audio_query?text={translation_text}&speaker=0"
+
+    VoiceTextResponse = requests.request("POST", url, headers=headers)
+
+    url = "http://127.0.0.1:50021/synthesis?speaker=0"
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    payload = VoiceTextResponse
+    AudioResponse = requests.request(
+        "POST", url, headers=headers, data=payload)
+
+    with open("audioResponse.wav", "wb") as file:
+        file.write(AudioResponse.content)
 audio.terminate()
