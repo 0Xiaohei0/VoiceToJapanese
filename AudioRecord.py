@@ -1,8 +1,9 @@
+import os
 import pyaudio
 from pydub import AudioSegment
 import keyboard
 import requests
-import os
+import json
 
 # Define constants
 CHUNK = 1024
@@ -52,18 +53,35 @@ while True:
 
     audio_segment.export(OUTPUT_FILENAME, format="mp3")
 
+    # Send audio to whisper backend
     with open(OUTPUT_FILENAME, "rb") as file:
         url = "http://localhost:9000/asr?task=transcribe&language=en&output=txt"
         files = [
             ('audio_file', (OUTPUT_FILENAME, file, 'audio/mpeg'))
         ]
-        response = requests.request("POST", url, files=files)
+        SpeechToTextResponse = requests.request("POST", url, files=files)
 
-        print(response.text)
-        if response.status_code == 200:
-            print(response)
+        print(SpeechToTextResponse.text)
+        if SpeechToTextResponse.status_code == 200:
+            print(SpeechToTextResponse)
         else:
-            print("Error: ", response.status_code)
-            print(response)
+            print("Error: ", SpeechToTextResponse.status_code)
+            print(SpeechToTextResponse)
 
+    token = os.environ.get("translation-service-api-token")
+    # Send text to translation service
+    headers = {
+        'Authorization': f'DeepL-Auth-Key {token}',
+        'Content-Type': 'application/x-www-form-urlencoded',
+    }
+    data = f'text={SpeechToTextResponse.text}&target_lang=JA'
+
+    translationResponse = requests.post(
+        'https://api-free.deepl.com/v2/translate', headers=headers, data=data)
+
+    translation = translationResponse.content.decode('utf-8')
+    translation_text = json.loads(translation)['translations'][0]['text']
+    text_file = open("sample.txt", "w", encoding='utf-8')
+    n = text_file.write(translation_text)
+    text_file.close()
 audio.terminate()
