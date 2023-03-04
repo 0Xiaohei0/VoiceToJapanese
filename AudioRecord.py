@@ -1,6 +1,7 @@
 import os
 import pyaudio
 from pydub import AudioSegment
+from pydub.playback import play
 import keyboard
 import requests
 import json
@@ -99,4 +100,6 @@ while True:
 
     with open("audioResponse.wav", "wb") as file:
         file.write(AudioResponse.content)
+    voiceLine = AudioSegment.from_wav("audioResponse.wav")
+    play(voiceLine)
 audio.terminate()
