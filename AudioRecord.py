@@ -1,7 +1,8 @@
 import pyaudio
-import wave
+from pydub import AudioSegment
 import keyboard
 import requests
+import os
 
 # Define constants
 CHUNK = 1024
@@ -9,7 +10,7 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 2
 RATE = 44100
 RECORD_SECONDS = 5
-WAVE_OUTPUT_FILENAME = "Output/output.wav"
+OUTPUT_FILENAME = "Output/output.mp3"
 
 PUSH_TO_RECORD_KEY = '7'
 
@@ -42,28 +43,27 @@ while True:
     stream.close()
 
     # Save recorded audio data to file
-    waveFile = wave.open(WAVE_OUTPUT_FILENAME, 'wb')
-    waveFile.setnchannels(CHANNELS)
-    waveFile.setsampwidth(audio.get_sample_size(FORMAT))
-    waveFile.setframerate(RATE)
-    waveFile.writeframes(b''.join(frames))
+    audio_segment = AudioSegment(
+        data=b''.join(frames),
+        sample_width=audio.get_sample_size(FORMAT),
+        frame_rate=RATE,
+        channels=CHANNELS
+    )
 
-    with open(WAVE_OUTPUT_FILENAME, "rb") as f:
-        file_content = f.read()
+    audio_segment.export(OUTPUT_FILENAME, format="mp3")
 
-    headers = {
-        "Content-Type": "multipart/form-data; boundary={}'.format(boundary) "}
-    data = {"audio_file": (WAVE_OUTPUT_FILENAME, file_content, "audio/wav")}
-    response = requests.post(
-        "http://localhost:9000/asr?task=transcribe&language=en&output=txt", headers=headers, data=file_content)
-    if response.status_code == 200:
-        data = response.json()
-        print(data)
-    else:
-        print("Error: ", response.status_code)
-        data = response.json()
-        print(data)
+    with open(OUTPUT_FILENAME, "rb") as file:
+        url = "http://localhost:9000/asr?task=transcribe&language=en&output=txt"
+        files = [
+            ('audio_file', (OUTPUT_FILENAME, file, 'audio/mpeg'))
+        ]
+        response = requests.request("POST", url, files=files)
 
-    waveFile.close()
+        print(response.text)
+        if response.status_code == 200:
+            print(response)
+        else:
+            print("Error: ", response.status_code)
+            print(response)
 
 audio.terminate()
