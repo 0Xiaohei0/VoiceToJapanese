@@ -49,3 +49,12 @@ Japanese: みなさん、こんにちは。
 ```
 
 You can toggle the translation function by pressing the toggle translate key to to  (default key is 0)
+
+# Inspiration
+
+This project was inspired by this video：
+https://youtu.be/UY7sRB60wZ4
+
+Credit to
+[@sociallyineptweeb](https://www.youtube.com/@sociallyineptweeb)
+for the ideas and APIs used.
