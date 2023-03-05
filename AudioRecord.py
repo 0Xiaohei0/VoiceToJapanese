@@ -18,16 +18,19 @@ OUTPUT_FILENAME = "Output/output.mp3"
 PUSH_TO_RECORD_KEY = '7'
 NO_TRANSLATE_KEY = '0'
 SPEAKER_ID = '0'
+# input language used by transcriber
 inputLanguage = 'zh'
-outputLanguage = 'zh'
+# output language used by the translator
+outputLanguage = 'ja'
 # "zh": "chinese", "ja": "japanese", "en": "english", "ko": "korean"
 
-translate = False
+translate = inputLanguage != outputLanguage
 audio = pyaudio.PyAudio()
 
 
 use_microsoft_azure_tts = True
-azure_tts_voice_name = 'zh-CN-XiaoyiNeural'
+azure_tts_voice_name = 'ja-JP-AoiNeural'
+# ja-JP-AoiNeural zh-CN-XiaoyiNeural
 
 if (use_microsoft_azure_tts):
     # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
@@ -100,13 +103,19 @@ def sendTextToTranslationService(text_output):
         'Authorization': f'DeepL-Auth-Key {token}',
         'Content-Type': 'application/x-www-form-urlencoded',
     }
-    data = f'text={text_output}&target_lang=JA'
+    data = f'text={text_output}&target_lang={outputLanguage.upper()}'
     translationResponse = requests.post(
         'https://api-free.deepl.com/v2/translate', headers=headers, data=data.encode('utf-8'))
-    translation = translationResponse.content.decode('utf-8')
-    text_output = json.loads(translation)['translations'][0]['text']
-    print(f'Translation: {text_output}')
-    return text_output
+    responseJSON = json.loads(
+        translationResponse.content.decode('utf-8'))
+    if "translations" in responseJSON:
+        text_output = responseJSON['translations'][0]['text']
+        print(f'Translation: {text_output}')
+        return text_output
+    else:
+        print("Error retrieving translation:")
+        print(responseJSON)
+        return ""
 
 
 def sendTextToSyntheizer(text_output):
