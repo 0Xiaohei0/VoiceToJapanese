@@ -20,23 +20,43 @@ OUTPUT_FILENAME = "Output/output.mp3"
 PUSH_TO_RECORD_KEY = '7'
 NO_TRANSLATE_KEY = '0'
 
-use_microsoft_azure_tts = True
-azure_tts_voice_name = 'zh-CN-XiaoyiNeural'
 
-SPEAKER_ID = '0'
-# input language used by transcriber
-inputLanguage = 'zh'
-# output language used by the translator
-outputLanguage = 'zh'
-# "zh": "chinese", "ja": "japanese", "en": "english", "ko": "korean"
-if (use_microsoft_azure_tts):
-    outputLanguage = azure_tts_voice_name[0:2]
+class VoiceVoxSpeaker(Enum):
+    四国めたん_1 = 2
+    四国めたん_2 = 0
+    四国めたん_3 = 6
+    四国めたん_4 = 4
+    四国めたん_5 = 36
+    四国めたん_6 = 37
 
-translate = inputLanguage != outputLanguage
-audio = pyaudio.PyAudio()
+    春日部つむぎ = 8
+    雨晴はう = 10
+    冥鳴ひまり = 14
 
-text_input = False
-text = ''
+    九州そら_1 = 16
+    九州そら_2 = 15
+    九州そら_3 = 17
+    九州そら_4 = 19
+
+    もち子さん = 20
+    剣崎雌雄 = 21  # male
+
+    ナースロボタイプ_1 = 47
+    ナースロボタイプ_2 = 48
+    ナースロボタイプ_3 = 49
+    ナースロボタイプ_4 = 50
+
+    小夜SAYO = 46
+    櫻歌ミコ_1 = 43
+    櫻歌ミコ_2 = 44
+    櫻歌ミコ_3 = 45
+
+    No7_1 = 29
+    No7_2 = 30
+    No7_3 = 31
+
+
+SPEAKER_ID = VoiceVoxSpeaker.春日部つむぎ.value
 
 # Female
 # ja-JP-AoiNeural ja-JP-NanamiNeural ja-JP-MayuNeural ja-JP-ShioriNeural
@@ -48,7 +68,25 @@ text = ''
 # India en-IN-NeerjaNeural
 # Child en-GB-MaisieNeural
 # US en-US-AmberNeural
+azure_tts_voice_name = 'zh-CN-XiaoshuangNeural'
 
+use_microsoft_azure_tts = False
+
+# input language used by transcriber
+inputLanguage = 'zh'
+# output language used by the translator
+outputLanguage = 'ja'
+# "zh": "chinese", "ja": "japanese", "en": "english", "ko": "korean"
+if (use_microsoft_azure_tts):
+    outputLanguage = azure_tts_voice_name[0:2]
+
+translate = inputLanguage != outputLanguage
+audio = pyaudio.PyAudio()
+
+text_input = False
+text = ''
+
+repeat_in_chinese = True
 
 if (use_microsoft_azure_tts):
     # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
@@ -193,14 +231,30 @@ while True:
     else:
         continue
     recordAudio()
-    text_output = sendAudioToWhisper()
+    input_text = sendAudioToWhisper()
     if (translate):
-        text_output = sendTextToTranslationService(text_output)
-    if (use_microsoft_azure_tts):
-        CallAzureTTS(text_output)
+        input_processed_text = sendTextToTranslationService(input_text)
     else:
-        AudioResponse = sendTextToSyntheizer(text_output)
+        input_processed_text = input_text
+    if (use_microsoft_azure_tts):
+        CallAzureTTS(input_processed_text)
+    else:
+        AudioResponse = sendTextToSyntheizer(input_processed_text)
         with open("audioResponse.wav", "wb") as file:
             file.write(AudioResponse.content)
         voiceLine = AudioSegment.from_wav("audioResponse.wav")
         play(voiceLine)
+        if (repeat_in_chinese):
+            # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
+            speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
+                'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
+            audio_config = speechsdk.audio.AudioOutputConfig(
+                use_default_speaker=True)
+
+            # The language of the voice that speaks.
+            speech_config.speech_synthesis_voice_name = azure_tts_voice_name
+
+            speech_synthesizer = speechsdk.SpeechSynthesizer(
+                speech_config=speech_config, audio_config=audio_config)
+            azure_tts_voice_name = 'zh-CN-XiaoshuangNeural'
+            CallAzureTTS(input_text)
