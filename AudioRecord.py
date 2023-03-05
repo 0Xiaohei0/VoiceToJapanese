@@ -6,6 +6,7 @@ import keyboard
 import requests
 import json
 import azure.cognitiveservices.speech as speechsdk
+from enum import Enum
 
 # Define constants
 CHUNK = 1024
@@ -15,22 +16,39 @@ RATE = 44100
 RECORD_SECONDS = 5
 OUTPUT_FILENAME = "Output/output.mp3"
 
+
 PUSH_TO_RECORD_KEY = '7'
 NO_TRANSLATE_KEY = '0'
+
+use_microsoft_azure_tts = True
+azure_tts_voice_name = 'zh-CN-XiaoyiNeural'
+
 SPEAKER_ID = '0'
 # input language used by transcriber
 inputLanguage = 'zh'
 # output language used by the translator
-outputLanguage = 'ja'
+outputLanguage = 'zh'
 # "zh": "chinese", "ja": "japanese", "en": "english", "ko": "korean"
+if (use_microsoft_azure_tts):
+    outputLanguage = azure_tts_voice_name[0:2]
 
 translate = inputLanguage != outputLanguage
 audio = pyaudio.PyAudio()
 
+text_input = False
+text = ''
 
-use_microsoft_azure_tts = True
-azure_tts_voice_name = 'ja-JP-AoiNeural'
-# ja-JP-AoiNeural zh-CN-XiaoyiNeural
+# Female
+# ja-JP-AoiNeural ja-JP-NanamiNeural ja-JP-MayuNeural ja-JP-ShioriNeural
+# zh-CN-XiaoyiNeural zh-CN-XiaoshuangNeural
+
+# Male
+# ja-JP-KeitaNeural
+
+# India en-IN-NeerjaNeural
+# Child en-GB-MaisieNeural
+# US en-US-AmberNeural
+
 
 if (use_microsoft_azure_tts):
     # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
@@ -147,6 +165,18 @@ def CallAzureTTS(text):
                 print("Error details: {}".format(
                     cancellation_details.error_details))
                 print("Did you set the speech resource key and region values?")
+
+
+if (text_input):
+    if (use_microsoft_azure_tts):
+        CallAzureTTS(text)
+    else:
+        AudioResponse = sendTextToSyntheizer(text)
+        with open("audioResponse.wav", "wb") as file:
+            file.write(AudioResponse.content)
+        voiceLine = AudioSegment.from_wav("audioResponse.wav")
+        play(voiceLine)
+    print("finished")
 
 
 while True:
