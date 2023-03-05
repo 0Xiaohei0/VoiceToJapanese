@@ -5,6 +5,7 @@ from pydub.playback import play
 import keyboard
 import requests
 import json
+import azure.cognitiveservices.speech as speechsdk
 
 # Define constants
 CHUNK = 1024
@@ -17,9 +18,28 @@ OUTPUT_FILENAME = "Output/output.mp3"
 PUSH_TO_RECORD_KEY = '7'
 NO_TRANSLATE_KEY = '0'
 SPEAKER_ID = '0'
+inputLanguage = 'zh'
+outputLanguage = 'zh'
+# "zh": "chinese", "ja": "japanese", "en": "english", "ko": "korean"
 
-translate = True
+translate = False
 audio = pyaudio.PyAudio()
+
+
+use_microsoft_azure_tts = True
+azure_tts_voice_name = 'zh-CN-XiaoyiNeural'
+
+if (use_microsoft_azure_tts):
+    # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
+    speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
+        'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
+    audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
+
+    # The language of the voice that speaks.
+    speech_config.speech_synthesis_voice_name = azure_tts_voice_name
+
+    speech_synthesizer = speechsdk.SpeechSynthesizer(
+        speech_config=speech_config, audio_config=audio_config)
 
 
 def recordAudio():
@@ -57,13 +77,10 @@ def recordAudio():
 def sendAudioToWhisper():
     with open(OUTPUT_FILENAME, "rb") as file:
         url = "http://localhost:9000/asr"
-        AudioLanguage = 'EN'
-        if (not translate):
-            AudioLanguage = 'JA'
 
         params = {
             'task': 'transcribe',
-            'language': AudioLanguage,
+            'language': inputLanguage,
             'output': 'txt'
         }
         files = [
@@ -71,9 +88,9 @@ def sendAudioToWhisper():
         ]
         SpeechToTextResponse = requests.request(
             "POST", url, params=params, files=files)
-
-        print(f'Input: {SpeechToTextResponse.text}')
-        return SpeechToTextResponse.text
+        output = SpeechToTextResponse.text.rstrip('\n')
+        print(f'Input: {output}')
+        return output
 
 
 def sendTextToTranslationService(text_output):
@@ -88,7 +105,7 @@ def sendTextToTranslationService(text_output):
         'https://api-free.deepl.com/v2/translate', headers=headers, data=data.encode('utf-8'))
     translation = translationResponse.content.decode('utf-8')
     text_output = json.loads(translation)['translations'][0]['text']
-    print(f'Japanese: {text_output}')
+    print(f'Translation: {text_output}')
     return text_output
 
 
@@ -105,6 +122,22 @@ def sendTextToSyntheizer(text_output):
     AudioResponse = requests.request(
         "POST", url, data=payload)
     return AudioResponse
+
+
+def CallAzureTTS(text):
+    speech_synthesis_result = speech_synthesizer.speak_text_async(text).get()
+
+    if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
+        print("Speech synthesized for text [{}]".format(text))
+    elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
+        cancellation_details = speech_synthesis_result.cancellation_details
+        print("Speech synthesis canceled: {}".format(
+            cancellation_details.reason))
+        if cancellation_details.reason == speechsdk.CancellationReason.Error:
+            if cancellation_details.error_details:
+                print("Error details: {}".format(
+                    cancellation_details.error_details))
+                print("Did you set the speech resource key and region values?")
 
 
 while True:
@@ -124,8 +157,11 @@ while True:
     text_output = sendAudioToWhisper()
     if (translate):
         text_output = sendTextToTranslationService(text_output)
-    AudioResponse = sendTextToSyntheizer(text_output)
-    with open("audioResponse.wav", "wb") as file:
-        file.write(AudioResponse.content)
-    voiceLine = AudioSegment.from_wav("audioResponse.wav")
-    play(voiceLine)
+    if (use_microsoft_azure_tts):
+        CallAzureTTS(text_output)
+    else:
+        AudioResponse = sendTextToSyntheizer(text_output)
+        with open("audioResponse.wav", "wb") as file:
+            file.write(AudioResponse.content)
+        voiceLine = AudioSegment.from_wav("audioResponse.wav")
+        play(voiceLine)
