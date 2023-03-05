@@ -56,7 +56,7 @@ class VoiceVoxSpeaker(Enum):
     No7_3 = 31
 
 
-SPEAKER_ID = VoiceVoxSpeaker.春日部つむぎ.value
+SPEAKER_ID = VoiceVoxSpeaker.ナースロボタイプ_1.value
 
 # Female
 # ja-JP-AoiNeural ja-JP-NanamiNeural ja-JP-MayuNeural ja-JP-ShioriNeural
@@ -68,9 +68,9 @@ SPEAKER_ID = VoiceVoxSpeaker.春日部つむぎ.value
 # India en-IN-NeerjaNeural
 # Child en-GB-MaisieNeural
 # US en-US-AmberNeural
-azure_tts_voice_name = 'zh-CN-XiaoshuangNeural'
+azure_tts_voice_name = 'ja-JP-AoiNeural'
 
-use_microsoft_azure_tts = False
+use_microsoft_azure_tts = True
 
 # input language used by transcriber
 inputLanguage = 'zh'
@@ -83,7 +83,8 @@ if (use_microsoft_azure_tts):
 translate = inputLanguage != outputLanguage
 audio = pyaudio.PyAudio()
 
-text_input = False
+receive_input_from_text = False
+text_input_translate = True
 text = ''
 
 repeat_in_chinese = True
@@ -205,16 +206,34 @@ def CallAzureTTS(text):
                 print("Did you set the speech resource key and region values?")
 
 
-if (text_input):
+if (receive_input_from_text):
+    input_processed_text = text
+    if (text_input_translate):
+        input_processed_text = sendTextToTranslationService(text)
+
     if (use_microsoft_azure_tts):
-        CallAzureTTS(text)
+        CallAzureTTS(input_processed_text)
     else:
-        AudioResponse = sendTextToSyntheizer(text)
+        AudioResponse = sendTextToSyntheizer(input_processed_text)
         with open("audioResponse.wav", "wb") as file:
             file.write(AudioResponse.content)
         voiceLine = AudioSegment.from_wav("audioResponse.wav")
         play(voiceLine)
-    print("finished")
+        if (repeat_in_chinese):
+            # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
+            speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
+                'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
+            audio_config = speechsdk.audio.AudioOutputConfig(
+                use_default_speaker=True)
+
+            # The language of the voice that speaks.
+            speech_config.speech_synthesis_voice_name = azure_tts_voice_name
+
+            speech_synthesizer = speechsdk.SpeechSynthesizer(
+                speech_config=speech_config, audio_config=audio_config)
+            azure_tts_voice_name = 'zh-CN-XiaoshuangNeural'
+            CallAzureTTS(text)
+    exit()
 
 
 while True:
@@ -245,16 +264,16 @@ while True:
         voiceLine = AudioSegment.from_wav("audioResponse.wav")
         play(voiceLine)
         if (repeat_in_chinese):
-            # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
-            speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
-                'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
-            audio_config = speechsdk.audio.AudioOutputConfig(
-                use_default_speaker=True)
+            if (not use_microsoft_azure_tts):
+                # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
+                speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
+                    'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
+                audio_config = speechsdk.audio.AudioOutputConfig(
+                    use_default_speaker=True)
 
             # The language of the voice that speaks.
-            speech_config.speech_synthesis_voice_name = azure_tts_voice_name
+            speech_config.speech_synthesis_voice_name = 'zh-CN-XiaoshuangNeural'
 
-            speech_synthesizer = speechsdk.SpeechSynthesizer(
-                speech_config=speech_config, audio_config=audio_config)
-            azure_tts_voice_name = 'zh-CN-XiaoshuangNeural'
-            CallAzureTTS(input_text)
+        speech_synthesizer = speechsdk.SpeechSynthesizer(
+            speech_config=speech_config, audio_config=audio_config)
+        CallAzureTTS(input_text)
