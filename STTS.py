@@ -16,6 +16,8 @@ recording = False
 auto_recording = False
 logging_eventhandlers = []
 
+voice_name = ''
+
 
 def start_record():
     log_message("Recording...")
@@ -89,23 +91,25 @@ def recognize_from_microphone():
         speech_config=speech_config, audio_config=audio_config)
 
     log_message("Speak into your microphone.")
-    speech_recognition_result = speech_recognizer.recognize_once()
+    while True:
+        speech_recognition_result = speech_recognizer.recognize_once()
 
-    if speech_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
-        log_message("Recognized: {}".format(speech_recognition_result.text))
-        return speech_recognition_result.text
-    elif speech_recognition_result.reason == speechsdk.ResultReason.NoMatch:
-        log_message("No speech could be recognized: {}".format(
-            speech_recognition_result.no_match_details))
-    elif speech_recognition_result.reason == speechsdk.ResultReason.Canceled:
-        cancellation_details = speech_recognition_result.cancellation_details
-        log_message("Speech Recognition canceled: {}".format(
-            cancellation_details.reason))
-        if cancellation_details.reason == speechsdk.CancellationReason.Error:
-            log_message("Error details: {}".format(
-                cancellation_details.error_details))
-            log_message(
-                "Did you set the speech resource key and region values?")
+        if speech_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
+            log_message("Recognized: {}".format(
+                speech_recognition_result.text))
+            return speech_recognition_result.text
+        elif speech_recognition_result.reason == speechsdk.ResultReason.NoMatch:
+            print("No speech could be recognized: {}".format(
+                speech_recognition_result.no_match_details))
+        elif speech_recognition_result.reason == speechsdk.ResultReason.Canceled:
+            cancellation_details = speech_recognition_result.cancellation_details
+            print("Speech Recognition canceled: {}".format(
+                cancellation_details.reason))
+            if cancellation_details.reason == speechsdk.CancellationReason.Error:
+                print("Error details: {}".format(
+                    cancellation_details.error_details))
+                print(
+                    "Did you set the speech resource key and region values?")
 
 
 class VoiceVoxSpeaker(Enum):
@@ -141,6 +145,17 @@ class VoiceVoxSpeaker(Enum):
     No7_1 = 29
     No7_2 = 30
     No7_3 = 31
+
+
+class VoiceType(Enum):
+    MICROSOFT_AZURE = 0
+    VOICE_VOX = 1
+
+
+voicename_to_callparam_dict = {
+    "四国めたん": {'voice_type': VoiceType.VOICE_VOX, 'voice_id': VoiceVoxSpeaker.四国めたん_1.value},
+    "JP-Aoi": {'voice_type': VoiceType.MICROSOFT_AZURE, 'voice_id': "ja-JP-AoiNeural"}
+}
 
 
 def sendAudioToWhisper(file_name, input_language):
@@ -267,27 +282,29 @@ def start_STTS_pipeline(
     else:
         AudioResponse = sendTextToSyntheizer(input_processed_text, SPEAKER_ID)
         PlayAudio(AudioResponse.content)
-    log_message('\n')
+    log_message('')
 
 
-def start_TTS_pipeline(input_text,
-                       azure_tts_voice_name='ja-JP-AoiNeural', SPEAKER_ID=VoiceVoxSpeaker.九州そら_1.value, inputLanguage='zh', outputLanguage='ja'
+def start_TTS_pipeline(input_text, inputLanguage='zh', outputLanguage='ja'
                        ):
-    use_microsoft_azure_tts = False
+    global voice_name
 
+    voiceparam = voicename_to_callparam_dict[voice_name]
+    use_microsoft_azure_tts = voiceparam['voice_type'] == VoiceType.MICROSOFT_AZURE
+    print(voiceparam['voice_id'])
     translate = inputLanguage != outputLanguage
     if (translate):
         input_processed_text = sendTextToTranslationService(
             input_text, outputLanguage)
     else:
         input_processed_text = input_text
-
     if (use_microsoft_azure_tts):
-        CallAzureTTS(input_processed_text, azure_tts_voice_name)
+        CallAzureTTS(input_processed_text, voiceparam['voice_id'])
     else:
-        AudioResponse = sendTextToSyntheizer(input_processed_text, SPEAKER_ID)
+        AudioResponse = sendTextToSyntheizer(
+            input_processed_text, voiceparam['voice_id'])
         PlayAudio(AudioResponse.content)
-    log_message('\n')
+    log_message('')
 
 
 def log_message(message_text):
@@ -295,3 +312,10 @@ def log_message(message_text):
     global logging_eventhandlers
     for eventhandler in logging_eventhandlers:
         eventhandler(message_text)
+
+
+def set_voice(voice_type, voice_key):
+    if (voice_type == VoiceType.MICROSOFT_AZURE):
+        print("azure")
+    elif (voice_type == VoiceType.VOICE_VOX):
+        print("voicevox")

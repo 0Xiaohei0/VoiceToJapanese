@@ -85,6 +85,8 @@ class ConsoleFrame(customtkinter.CTkFrame):
 class OptionsFrame(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
+        self.default_voice = "四国めたん"
+        self.voicenames = ["JP-Aoi", "四国めたん"]
 
         label_Input = customtkinter.CTkLabel(
             master=self, text='Input Language: ')
@@ -92,7 +94,7 @@ class OptionsFrame(customtkinter.CTkFrame):
         combobox_var = customtkinter.StringVar(value="Auto")
         combobox = customtkinter.CTkComboBox(master=self,
                                              values=["Auto", "option 2"],
-                                             command=combobox_callback,
+                                             command=self.input_dropdown_callbakck,
                                              variable=combobox_var)
         combobox.pack(padx=20, pady=10,)
 
@@ -103,7 +105,7 @@ class OptionsFrame(customtkinter.CTkFrame):
             value="Auto")
         combobox = customtkinter.CTkComboBox(master=self,
                                              values=["Auto", "option 2"],
-                                             command=combobox_callback,
+                                             command=self.output_dropdown_callbakck,
                                              variable=combobox_var)
         combobox.pack(padx=20, pady=10)
 
@@ -111,12 +113,23 @@ class OptionsFrame(customtkinter.CTkFrame):
             master=self, text='Voice: ')
         label_Output.pack(padx=20)
         combobox_var = customtkinter.StringVar(
-            value="option 2")
+            value=self.default_voice)
+        STTS.voice_name = self.default_voice
         combobox = customtkinter.CTkComboBox(master=self,
-                                             values=["Auto", "option 2"],
-                                             command=combobox_callback,
+                                             values=self.voicenames,
+                                             command=self.voice_dropdown_callbakck,
                                              variable=combobox_var)
         combobox.pack(padx=20, pady=10)
+
+    def input_dropdown_callbakck(self, choice):
+        print("input_dropdown_callbakck")
+
+    def output_dropdown_callbakck(self, choice):
+        print("input_dropdown_callbakck")
+
+    def voice_dropdown_callbakck(self, choice):
+        print(f"setting voicename to {choice}")
+        STTS.voice_name = choice
 
 
 class App(customtkinter.CTk):
@@ -139,10 +152,6 @@ class App(customtkinter.CTk):
 
 def optionmenu_callback(choice):
     print("optionmenu dropdown clicked:", choice)
-
-
-def combobox_callback(choice):
-    STTS.combobox_callback(choice)
 
 
 app = App()
