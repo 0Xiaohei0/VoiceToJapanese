@@ -1,4 +1,6 @@
+from threading import Thread
 import customtkinter
+import STTS
 
 
 class SidebarFrame(customtkinter.CTkFrame):
@@ -27,8 +29,11 @@ class SidebarFrame(customtkinter.CTkFrame):
 
 
 class ConsoleFrame(customtkinter.CTkFrame):
+
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
+
+        self.isRecording = False
         # add widgets onto the frame...
         textbox = customtkinter.CTkTextbox(self, width=400, height=400)
         textbox.grid(row=0, column=0, rowspan=2, columnspan=2)
@@ -37,25 +42,41 @@ class ConsoleFrame(customtkinter.CTkFrame):
         # configure textbox to be read-only
         textbox.configure(state="disabled")
 
-        button = customtkinter.CTkButton(master=self,
-                                         width=120,
-                                         height=32,
-                                         border_width=0,
-                                         corner_radius=8,
-                                         text="Start Recording",
-                                         fg_color='grey'
-                                         )
-        button.grid(row=3, column=0, pady=10)
+        self.recordButton = customtkinter.CTkButton(master=self,
+                                                    width=120,
+                                                    height=32,
+                                                    border_width=0,
+                                                    corner_radius=8,
+                                                    text="Start Recording",
+                                                    command=self.recordButton_callback,
+                                                    fg_color='grey'
+                                                    )
+        self.recordButton.grid(row=3, column=0, pady=10)
 
-        button1 = customtkinter.CTkButton(master=self,
-                                          width=120,
-                                          height=32,
-                                          border_width=0,
-                                          corner_radius=8,
-                                          text="Play original",
-                                          fg_color='grey'
-                                          )
-        button1.grid(row=3, column=1, pady=10)
+        self.playOriginalButton = customtkinter.CTkButton(master=self,
+                                                          width=120,
+                                                          height=32,
+                                                          border_width=0,
+                                                          corner_radius=8,
+                                                          text="Play original",
+                                                          fg_color='grey'
+                                                          )
+        self.playOriginalButton.grid(row=3, column=1, pady=10)
+
+    def recordButton_callback(self):
+        if (self.isRecording):
+            self.recordButton.configure(
+                text="Start Recording", fg_color='grey')
+            self.isRecording = False
+            thread = Thread(target=STTS.stop_record)
+            thread.start()
+        else:
+            self.recordButton.configure(
+                text="Stop Recording", fg_color='#fc7b5b')
+            self.isRecording = True
+            thread = Thread(target=STTS.start_record)
+            thread.start()
+        self.recordButton.grid(row=3, column=0, pady=10)
 
 
 class OptionsFrame(customtkinter.CTkFrame):
@@ -68,7 +89,7 @@ class OptionsFrame(customtkinter.CTkFrame):
         combobox_var = customtkinter.StringVar(value="Auto")
         combobox = customtkinter.CTkComboBox(master=self,
                                              values=["Auto", "option 2"],
-                                             command=self.combobox_callback,
+                                             command=combobox_callback,
                                              variable=combobox_var)
         combobox.pack(padx=20, pady=10,)
 
@@ -79,7 +100,7 @@ class OptionsFrame(customtkinter.CTkFrame):
             value="Auto")
         combobox = customtkinter.CTkComboBox(master=self,
                                              values=["Auto", "option 2"],
-                                             command=self.combobox_callback,
+                                             command=combobox_callback,
                                              variable=combobox_var)
         combobox.pack(padx=20, pady=10)
 
@@ -90,12 +111,9 @@ class OptionsFrame(customtkinter.CTkFrame):
             value="option 2")
         combobox = customtkinter.CTkComboBox(master=self,
                                              values=["Auto", "option 2"],
-                                             command=self.combobox_callback,
+                                             command=combobox_callback,
                                              variable=combobox_var)
         combobox.pack(padx=20, pady=10)
-
-    def combobox_callback(choice):
-        print("combobox dropdown clicked:", choice)
 
 
 class App(customtkinter.CTk):
@@ -114,21 +132,16 @@ class App(customtkinter.CTk):
 
         options = OptionsFrame(master=self)
         options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
-        # self.consoleFrame = ConsoleFrame(
-        #     master=self, width=2000, height=200, border_width=100, border_color='red')
-        # self.consoleFrame.grid(row=0, column=0, rowspan=2,
-        #                        columnspan=2, padx=20, pady=20)
-
-        # self.sidebarFrame = SidebarFrame(master=self)
-        # self.sidebarFrame.grid(row=0, column=0, padx=20, rowspan=4,
-        #                        pady=20, sticky="nswe")
 
     # add methods to app
-    def button_click(self):
-        print("button click")
 
-    def optionmenu_callback(choice):
-        print("optionmenu dropdown clicked:", choice)
+
+def optionmenu_callback(choice):
+    print("optionmenu dropdown clicked:", choice)
+
+
+def combobox_callback(choice):
+    STTS.combobox_callback(choice)
 
 
 app = App()
