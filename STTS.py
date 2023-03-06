@@ -13,6 +13,7 @@ MIC_OUTPUT_FILENAME = "Output/output.mp3"
 audio = pyaudio.PyAudio()
 
 recording = False
+auto_recording = False
 
 
 def start_record():
@@ -61,6 +62,48 @@ def stop_record():
     start_STTS_pipeline(
         azure_tts_voice_name='ja-JP-AoiNeural', SPEAKER_ID=VoiceVoxSpeaker.九州そら_1.value, inputLanguage='zh', outputLanguage='ja'
     )
+
+
+def start_record_auto():
+    global auto_recording
+    auto_recording = True
+    while auto_recording:
+        text = recognize_from_microphone()
+        start_TTS_pipeline(text)
+
+
+def stop_record_auto():
+    global auto_recording
+    auto_recording = False
+
+
+def recognize_from_microphone():
+    # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
+    speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
+        'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
+    speech_config.speech_recognition_language = "en-US"
+
+    audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+    speech_recognizer = speechsdk.SpeechRecognizer(
+        speech_config=speech_config, audio_config=audio_config)
+
+    print("Speak into your microphone.")
+    speech_recognition_result = speech_recognizer.recognize_once_async().get()
+
+    if speech_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
+        print("Recognized: {}".format(speech_recognition_result.text))
+        return speech_recognition_result.text
+    elif speech_recognition_result.reason == speechsdk.ResultReason.NoMatch:
+        print("No speech could be recognized: {}".format(
+            speech_recognition_result.no_match_details))
+    elif speech_recognition_result.reason == speechsdk.ResultReason.Canceled:
+        cancellation_details = speech_recognition_result.cancellation_details
+        print("Speech Recognition canceled: {}".format(
+            cancellation_details.reason))
+        if cancellation_details.reason == speechsdk.CancellationReason.Error:
+            print("Error details: {}".format(
+                cancellation_details.error_details))
+            print("Did you set the speech resource key and region values?")
 
 
 class VoiceVoxSpeaker(Enum):
@@ -187,11 +230,6 @@ def PlayAudio(audioBytes):
     voiceLine = AudioSegment.from_wav("audioResponse.wav")
     play(voiceLine)
 
-
-def start_STTS_pipeline(
-        azure_tts_voice_name='ja-JP-AoiNeural', SPEAKER_ID=VoiceVoxSpeaker.九州そら_1.value, inputLanguage='zh', outputLanguage='ja'
-):
-
     # Examples of azure_tts_voice_name:
     # Female
     # ja-JP-AoiNeural ja-JP-NanamiNeural ja-JP-MayuNeural ja-JP-ShioriNeural
@@ -205,6 +243,11 @@ def start_STTS_pipeline(
 
     # example of language codes
     # "zh": "chinese", "ja": "japanese", "en": "english", "ko": "korean"
+
+
+def start_STTS_pipeline(
+        azure_tts_voice_name='ja-JP-AoiNeural', SPEAKER_ID=VoiceVoxSpeaker.九州そら_1.value, inputLanguage='zh', outputLanguage='ja'
+):
     use_microsoft_azure_tts = False
 
     input_text = sendAudioToWhisper(MIC_OUTPUT_FILENAME, inputLanguage)
@@ -219,5 +262,24 @@ def start_STTS_pipeline(
     if (use_microsoft_azure_tts):
         CallAzureTTS(input_processed_text, azure_tts_voice_name)
     else:
-        AudioResponse = sendTextToSyntheizer(input_processed_text,SPEAKER_ID)
+        AudioResponse = sendTextToSyntheizer(input_processed_text, SPEAKER_ID)
+        PlayAudio(AudioResponse.content)
+
+
+def start_TTS_pipeline(input_text,
+                       azure_tts_voice_name='ja-JP-AoiNeural', SPEAKER_ID=VoiceVoxSpeaker.九州そら_1.value, inputLanguage='zh', outputLanguage='ja'
+                       ):
+    use_microsoft_azure_tts = False
+
+    translate = inputLanguage != outputLanguage
+    if (translate):
+        input_processed_text = sendTextToTranslationService(
+            input_text, outputLanguage)
+    else:
+        input_processed_text = input_text
+
+    if (use_microsoft_azure_tts):
+        CallAzureTTS(input_processed_text, azure_tts_voice_name)
+    else:
+        AudioResponse = sendTextToSyntheizer(input_processed_text, SPEAKER_ID)
         PlayAudio(AudioResponse.content)

@@ -66,13 +66,13 @@ class ConsoleFrame(customtkinter.CTkFrame):
             self.recordButton.configure(
                 text="Start Recording", fg_color='grey')
             self.isRecording = False
-            thread = Thread(target=STTS.stop_record)
+            thread = Thread(target=STTS.stop_record_auto)
             thread.start()
         else:
             self.recordButton.configure(
                 text="Stop Recording", fg_color='#fc7b5b')
             self.isRecording = True
-            thread = Thread(target=STTS.start_record)
+            thread = Thread(target=STTS.start_record_auto)
             thread.start()
         self.recordButton.grid(row=3, column=0, pady=10)
 
