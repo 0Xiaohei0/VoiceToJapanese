@@ -14,10 +14,11 @@ audio = pyaudio.PyAudio()
 
 recording = False
 auto_recording = False
+logging_eventhandlers = []
 
 
 def start_record():
-    print("Recording...")
+    log_message("Recording...")
 
     CHUNK = 1024
     FORMAT = pyaudio.paInt16
@@ -40,7 +41,7 @@ def start_record():
             break
 
     # Stop recording and close audio stream
-    print("Recording stopped.")
+    log_message("Recording stopped.")
     stream.stop_stream()
     stream.close()
 
@@ -58,7 +59,7 @@ def start_record():
 def stop_record():
     global recording
     recording = False
-    print("Recording Stopped")
+    log_message("Recording Stopped")
     start_STTS_pipeline(
         azure_tts_voice_name='ja-JP-AoiNeural', SPEAKER_ID=VoiceVoxSpeaker.九州そら_1.value, inputLanguage='zh', outputLanguage='ja'
     )
@@ -87,23 +88,24 @@ def recognize_from_microphone():
     speech_recognizer = speechsdk.SpeechRecognizer(
         speech_config=speech_config, audio_config=audio_config)
 
-    print("Speak into your microphone.")
-    speech_recognition_result = speech_recognizer.recognize_once_async().get()
+    log_message("Speak into your microphone.")
+    speech_recognition_result = speech_recognizer.recognize_once()
 
     if speech_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
-        print("Recognized: {}".format(speech_recognition_result.text))
+        log_message("Recognized: {}".format(speech_recognition_result.text))
         return speech_recognition_result.text
     elif speech_recognition_result.reason == speechsdk.ResultReason.NoMatch:
-        print("No speech could be recognized: {}".format(
+        log_message("No speech could be recognized: {}".format(
             speech_recognition_result.no_match_details))
     elif speech_recognition_result.reason == speechsdk.ResultReason.Canceled:
         cancellation_details = speech_recognition_result.cancellation_details
-        print("Speech Recognition canceled: {}".format(
+        log_message("Speech Recognition canceled: {}".format(
             cancellation_details.reason))
         if cancellation_details.reason == speechsdk.CancellationReason.Error:
-            print("Error details: {}".format(
+            log_message("Error details: {}".format(
                 cancellation_details.error_details))
-            print("Did you set the speech resource key and region values?")
+            log_message(
+                "Did you set the speech resource key and region values?")
 
 
 class VoiceVoxSpeaker(Enum):
@@ -156,7 +158,7 @@ def sendAudioToWhisper(file_name, input_language):
         SpeechToTextResponse = requests.request(
             "POST", url, params=params, files=files)
         output = SpeechToTextResponse.text.rstrip('\n')
-        print(f'Input: {output}')
+        log_message(f'Input: {output}')
         return output
 
 
@@ -174,11 +176,11 @@ def sendTextToTranslationService(text, outputLanguage):
         translationResponse.content.decode('utf-8'))
     if "translations" in responseJSON:
         text_output = responseJSON['translations'][0]['text']
-        print(f'Translation: {text_output}')
+        log_message(f'Translation: {text_output}')
         return text_output
     else:
-        print("Error retrieving translation:")
-        print(responseJSON)
+        log_message("Error retrieving translation:")
+        log_message(responseJSON)
         return ""
 
 
@@ -212,16 +214,17 @@ def CallAzureTTS(text, azure_tts_voice_name):
     speech_synthesis_result = speech_synthesizer.speak_text_async(text).get()
 
     if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-        print("Speech synthesized for text [{}]".format(text))
+        log_message("Speech synthesized for text [{}]".format(text))
     elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
         cancellation_details = speech_synthesis_result.cancellation_details
-        print("Speech synthesis canceled: {}".format(
+        log_message("Speech synthesis canceled: {}".format(
             cancellation_details.reason))
         if cancellation_details.reason == speechsdk.CancellationReason.Error:
             if cancellation_details.error_details:
-                print("Error details: {}".format(
+                log_message("Error details: {}".format(
                     cancellation_details.error_details))
-                print("Did you set the speech resource key and region values?")
+                log_message(
+                    "Did you set the speech resource key and region values?")
 
 
 def PlayAudio(audioBytes):
@@ -264,6 +267,7 @@ def start_STTS_pipeline(
     else:
         AudioResponse = sendTextToSyntheizer(input_processed_text, SPEAKER_ID)
         PlayAudio(AudioResponse.content)
+    log_message('\n')
 
 
 def start_TTS_pipeline(input_text,
@@ -283,3 +287,11 @@ def start_TTS_pipeline(input_text,
     else:
         AudioResponse = sendTextToSyntheizer(input_processed_text, SPEAKER_ID)
         PlayAudio(AudioResponse.content)
+    log_message('\n')
+
+
+def log_message(message_text):
+    print(message_text)
+    global logging_eventhandlers
+    for eventhandler in logging_eventhandlers:
+        eventhandler(message_text)

@@ -33,12 +33,11 @@ class ConsoleFrame(customtkinter.CTkFrame):
         super().__init__(master, **kwargs)
         self.isRecording = False
         # add widgets onto the frame...
-        textbox = customtkinter.CTkTextbox(self, width=400, height=400)
-        textbox.grid(row=0, column=0, rowspan=2, columnspan=2)
-        # insert at line 0 character 0
-        textbox.insert("0.0", "new text to insert")
+        self.textbox = customtkinter.CTkTextbox(self, width=400, height=400)
+        self.textbox.grid(row=0, column=0, rowspan=2, columnspan=2)
         # configure textbox to be read-only
-        textbox.configure(state="disabled")
+        self.textbox.configure(state="disabled")
+        STTS.logging_eventhandlers.append(self.log_message_on_console)
 
         self.recordButton = customtkinter.CTkButton(master=self,
                                                     width=120,
@@ -75,6 +74,12 @@ class ConsoleFrame(customtkinter.CTkFrame):
             thread = Thread(target=STTS.start_record_auto)
             thread.start()
         self.recordButton.grid(row=3, column=0, pady=10)
+
+    def log_message_on_console(self, message_text):
+        # insert at line 0 character 0
+        self.textbox.configure(state="normal")
+        self.textbox.insert(customtkinter.INSERT, message_text+'\n')
+        self.textbox.configure(state="disabled")
 
 
 class OptionsFrame(customtkinter.CTkFrame):
