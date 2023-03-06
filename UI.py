@@ -1,6 +1,7 @@
 from threading import Thread
 import customtkinter
 import STTS
+from threading import Event
 
 
 class SidebarFrame(customtkinter.CTkFrame):
@@ -32,6 +33,7 @@ class ConsoleFrame(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.isRecording = False
+        self.stop_recording_event = Event()
         # add widgets onto the frame...
         self.textbox = customtkinter.CTkTextbox(self, width=400, height=400)
         self.textbox.grid(row=0, column=0, rowspan=2, columnspan=2)
@@ -65,13 +67,14 @@ class ConsoleFrame(customtkinter.CTkFrame):
             self.recordButton.configure(
                 text="Start Recording", fg_color='grey')
             self.isRecording = False
-            thread = Thread(target=STTS.stop_record_auto)
-            thread.start()
+            self.stop_recording_event.set()
+            STTS.stop_record_auto()
         else:
             self.recordButton.configure(
                 text="Stop Recording", fg_color='#fc7b5b')
             self.isRecording = True
-            thread = Thread(target=STTS.start_record_auto)
+            thread = Thread(target=STTS.start_record_auto,
+                            args=(self.stop_recording_event,))
             thread.start()
         self.recordButton.grid(row=3, column=0, pady=10)
 

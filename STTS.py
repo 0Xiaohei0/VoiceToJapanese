@@ -2,11 +2,11 @@ import os
 import pyaudio
 from pydub import AudioSegment
 from pydub.playback import play
-import keyboard
 import requests
 import json
 import azure.cognitiveservices.speech as speechsdk
 from enum import Enum
+import romajitable
 
 
 MIC_OUTPUT_FILENAME = "Output/output.mp3"
@@ -16,6 +16,8 @@ recording = False
 auto_recording = False
 logging_eventhandlers = []
 
+inputLanguage = 'en'
+outputLanguage = 'ja'
 voice_name = ''
 
 
@@ -67,10 +69,12 @@ def stop_record():
     )
 
 
-def start_record_auto():
+def start_record_auto(stop_recording_event):
     global auto_recording
     auto_recording = True
     while auto_recording:
+        if (stop_recording_event.is_set()):
+            break
         text = recognize_from_microphone()
         start_TTS_pipeline(text)
 
@@ -153,8 +157,8 @@ class VoiceType(Enum):
 
 
 voicename_to_callparam_dict = {
-    "四国めたん": {'voice_type': VoiceType.VOICE_VOX, 'voice_id': VoiceVoxSpeaker.四国めたん_1.value},
-    "JP-Aoi": {'voice_type': VoiceType.MICROSOFT_AZURE, 'voice_id': "ja-JP-AoiNeural"}
+    "四国めたん": {'voice_type': VoiceType.VOICE_VOX.value, 'voice_id': VoiceVoxSpeaker.四国めたん_1.value},
+    "JP-Aoi": {'voice_type': VoiceType.MICROSOFT_AZURE.value, 'voice_id': "ja-JP-AoiNeural"}
 }
 
 
@@ -211,6 +215,7 @@ def sendTextToSyntheizer(text, speaker_id):
     payload = VoiceTextResponse
     AudioResponse = requests.request(
         "POST", url, data=payload)
+    log_message("Speech synthesized for text [{}]".format(text))
     return AudioResponse
 
 
@@ -285,13 +290,14 @@ def start_STTS_pipeline(
     log_message('')
 
 
-def start_TTS_pipeline(input_text, inputLanguage='zh', outputLanguage='ja'
+def start_TTS_pipeline(input_text, outputLanguage='ja'
                        ):
     global voice_name
-
+    global inputLanguage
     voiceparam = voicename_to_callparam_dict[voice_name]
-    use_microsoft_azure_tts = voiceparam['voice_type'] == VoiceType.MICROSOFT_AZURE
-    print(voiceparam['voice_id'])
+    use_microsoft_azure_tts = voiceparam['voice_type'] == VoiceType.MICROSOFT_AZURE.value
+    print(
+        f"VoiceType.MICROSOFT_AZURE.value : {VoiceType.MICROSOFT_AZURE.value}, voiceparam['voice_type']: {voiceparam['voice_type']}")
     translate = inputLanguage != outputLanguage
     if (translate):
         input_processed_text = sendTextToTranslationService(
@@ -304,7 +310,22 @@ def start_TTS_pipeline(input_text, inputLanguage='zh', outputLanguage='ja'
         AudioResponse = sendTextToSyntheizer(
             input_processed_text, voiceparam['voice_id'])
         PlayAudio(AudioResponse.content)
-    log_message('')
+
+    if (inputLanguage != 'en'):
+        input_processed_text = sendTextToTranslationService(
+            input_text, 'en')
+    else:
+        input_processed_text = input_text
+
+    text_ja = romajitable.to_kana(input_text).katakana
+    text_ja = text_ja.replace('・', '')
+    if (use_microsoft_azure_tts):
+        CallAzureTTS(text_ja, voiceparam['voice_id'])
+    else:
+        PlayAudio(sendTextToSyntheizer(
+            text_ja, voiceparam['voice_id']).content)
+
+    log_message(f'playing input: {input_processed_text}')
 
 
 def log_message(message_text):
