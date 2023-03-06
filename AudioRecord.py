@@ -8,18 +8,6 @@ import json
 import azure.cognitiveservices.speech as speechsdk
 from enum import Enum
 
-# Define constants
-CHUNK = 1024
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 44100
-RECORD_SECONDS = 5
-OUTPUT_FILENAME = "Output/output.mp3"
-
-
-PUSH_TO_RECORD_KEY = '7'
-NO_TRANSLATE_KEY = '0'
-
 
 class VoiceVoxSpeaker(Enum):
     四国めたん_1 = 2
@@ -56,7 +44,7 @@ class VoiceVoxSpeaker(Enum):
     No7_3 = 31
 
 
-SPEAKER_ID = VoiceVoxSpeaker.ナースロボタイプ_1.value
+SPEAKER_ID = VoiceVoxSpeaker.九州そら_1.value
 
 # Female
 # ja-JP-AoiNeural ja-JP-NanamiNeural ja-JP-MayuNeural ja-JP-ShioriNeural
@@ -70,7 +58,7 @@ SPEAKER_ID = VoiceVoxSpeaker.ナースロボタイプ_1.value
 # US en-US-AmberNeural
 azure_tts_voice_name = 'ja-JP-AoiNeural'
 
-use_microsoft_azure_tts = True
+use_microsoft_azure_tts = False
 
 # input language used by transcriber
 inputLanguage = 'zh'
@@ -235,6 +223,18 @@ if (receive_input_from_text):
             CallAzureTTS(text)
     exit()
 
+
+# Define constants
+CHUNK = 1024
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 44100
+RECORD_SECONDS = 5
+OUTPUT_FILENAME = "Output/output.mp3"
+
+
+PUSH_TO_RECORD_KEY = '7'
+NO_TRANSLATE_KEY = '0'
 
 while True:
     # Start recording when user presses "s" key
