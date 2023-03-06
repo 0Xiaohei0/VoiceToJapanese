@@ -29,10 +29,8 @@ class SidebarFrame(customtkinter.CTkFrame):
 
 
 class ConsoleFrame(customtkinter.CTkFrame):
-
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-
         self.isRecording = False
         # add widgets onto the frame...
         textbox = customtkinter.CTkTextbox(self, width=400, height=400)
@@ -132,8 +130,6 @@ class App(customtkinter.CTk):
 
         options = OptionsFrame(master=self)
         options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
-
-    # add methods to app
 
 
 def optionmenu_callback(choice):
