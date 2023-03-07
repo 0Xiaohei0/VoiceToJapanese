@@ -19,6 +19,11 @@ logging_eventhandlers = []
 voice_name = '四国めたん'
 input_language_name = 'English'
 
+# Stores variable for play original function
+last_input_text = ''
+last_voice_param = None
+last_input_language = ''
+
 
 class VoiceVoxSpeaker(Enum):
     四国めたん_1 = 2
@@ -323,21 +328,32 @@ def start_TTS_pipeline(input_text):
             input_processed_text, voiceparam.voice_id)
         PlayAudio(AudioResponse.content)
 
-    if (inputLanguage != 'en'):
-        input_processed_text = sendTextToTranslationService(
-            input_text, 'en')
-    else:
-        input_processed_text = input_text
+    global last_input_text
+    last_input_text = input_text
+    global last_input_language
+    last_input_language = inputLanguage
+    global last_voice_param
+    last_voice_param = voiceparam
 
-    text_ja = romajitable.to_kana(input_text).katakana
+
+def playOriginal():
+    global last_input_text
+    global last_voice_param
+    global last_input_language
+    last_input_text_processed = ''
+    if (last_input_language != 'en'):
+        last_input_text_processed = sendTextToTranslationService(
+            last_input_text, 'en')
+    else:
+        last_input_text_processed = last_input_text
+    text_ja = romajitable.to_kana(last_input_text_processed).katakana
     text_ja = text_ja.replace('・', '')
-    if (use_microsoft_azure_tts):
-        CallAzureTTS(text_ja, voiceparam.voice_id)
+    if (last_voice_param.voice_type == VoiceType.MICROSOFT_AZURE.value):
+        CallAzureTTS(text_ja, last_voice_param.voice_id)
     else:
         PlayAudio(sendTextToSyntheizer(
-            text_ja, voiceparam.voice_id).content)
-
-    log_message(f'playing input: {input_processed_text}')
+            text_ja, last_voice_param.voice_id).content)
+    log_message(f'playing input: {text_ja}')
 
 
 def log_message(message_text):

@@ -58,6 +58,7 @@ class ConsoleFrame(customtkinter.CTkFrame):
                                                           border_width=0,
                                                           corner_radius=8,
                                                           text="Play original",
+                                                          command=self.play_original_callback,
                                                           fg_color='grey'
                                                           )
         self.playOriginalButton.grid(row=3, column=1, pady=10)
@@ -77,6 +78,9 @@ class ConsoleFrame(customtkinter.CTkFrame):
                             args=(self.stop_recording_event,))
             thread.start()
         self.recordButton.grid(row=3, column=0, pady=10)
+
+    def play_original_callback(self):
+        STTS.playOriginal()
 
     def log_message_on_console(self, message_text):
         # insert at line 0 character 0
@@ -115,9 +119,6 @@ class OptionsFrame(customtkinter.CTkFrame):
 
     def input_dropdown_callbakck(self, choice):
         STTS.input_language_name = choice
-
-    def output_dropdown_callbakck(self, choice):
-        STTS.output_language_name = choice
 
     def voice_dropdown_callbakck(self, choice):
         STTS.voice_name = choice
