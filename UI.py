@@ -96,7 +96,8 @@ class OptionsFrame(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.default_voice = "四国めたん"
-        self.voicenames = ["JP-Aoi", "四国めたん", "CN-Xiaoyi"]
+        self.voicenames = list(STTS.voicename_to_callparam_dict.keys())
+
         self.default_input_anguage = "English"
         self.input_anguage = ["English", "Japanese", "Chinese"]
 
