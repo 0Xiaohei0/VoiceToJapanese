@@ -1,4 +1,5 @@
 import os
+import time
 import pyaudio
 from pydub import AudioSegment
 from pydub.playback import play
@@ -106,6 +107,17 @@ language_dict = {'English': "en-US",
                  "Japanese": "ja-JP",
                  "Chinese": "zh-CN"}
 
+speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
+    'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
+speech_config.speech_recognition_language = language_dict[input_language_name]
+audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+speech_recognizer = speechsdk.SpeechRecognizer(
+    speech_config=speech_config, audio_config=audio_config)
+# speech_recognizer.recognizing.connect(
+#     lambda evt: print(f'RECOGNIZING: {evt.result.text}'))
+speech_recognizer.recognized.connect(
+    lambda evt: start_TTS_pipeline(evt.result.text))
+
 
 def start_record():
     log_message("Recording...")
@@ -155,54 +167,27 @@ def stop_record():
     )
 
 
-def start_record_auto(stop_recording_event):
+def start_record_auto():
+    log_message("Recording...")
     global auto_recording
+    global speech_recognizer
     auto_recording = True
+    speech_recognizer.start_continuous_recognition()
     while auto_recording:
-        if (stop_recording_event.is_set()):
-            break
-        text = recognize_from_microphone()
-        start_TTS_pipeline(text)
+        speech_config.speech_recognition_language = language_dict[input_language_name]
+        time.sleep(.5)
 
 
 def stop_record_auto():
     global auto_recording
+    global speech_recognizer
     auto_recording = False
+    speech_recognizer.stop_continuous_recognition()
     log_message("Recording Stopped")
 
 
-def recognize_from_microphone():
-    global input_language_name
-    # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
-    speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
-        'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
-    speech_config.speech_recognition_language = language_dict[input_language_name]
-    print(language_dict[input_language_name])
-
-    audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
-    speech_recognizer = speechsdk.SpeechRecognizer(
-        speech_config=speech_config, audio_config=audio_config)
-
-    log_message("Speak into your microphone.")
-    while True:
-        speech_recognition_result = speech_recognizer.recognize_once_async().get()
-
-        if speech_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
-            log_message("Recognized: {}".format(
-                speech_recognition_result.text))
-            return speech_recognition_result.text
-        elif speech_recognition_result.reason == speechsdk.ResultReason.NoMatch:
-            print("No speech could be recognized: {}".format(
-                speech_recognition_result.no_match_details))
-        elif speech_recognition_result.reason == speechsdk.ResultReason.Canceled:
-            cancellation_details = speech_recognition_result.cancellation_details
-            print("Speech Recognition canceled: {}".format(
-                cancellation_details.reason))
-            if cancellation_details.reason == speechsdk.CancellationReason.Error:
-                print("Error details: {}".format(
-                    cancellation_details.error_details))
-                print(
-                    "Did you set the speech resource key and region values?")
+speech_recognizer.session_stopped.connect(stop_record_auto)
+speech_recognizer.canceled.connect(stop_record_auto)
 
 
 def sendAudioToWhisper(file_name, input_language):

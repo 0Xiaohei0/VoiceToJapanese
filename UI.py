@@ -70,15 +70,12 @@ class ConsoleFrame(customtkinter.CTkFrame):
             self.recordButton.configure(
                 text="Start Recording", fg_color='grey')
             self.isRecording = False
-            self.stop_recording_event.set()
             STTS.stop_record_auto()
         else:
             self.recordButton.configure(
                 text="Stop Recording", fg_color='#fc7b5b')
             self.isRecording = True
-            self.stop_recording_event.clear()
-            self.thread = Thread(target=STTS.start_record_auto,
-                                 args=(self.stop_recording_event,))
+            self.thread = Thread(target=STTS.start_record_auto)
             self.thread.start()
         self.recordButton.grid(row=3, column=0, pady=10)
 
@@ -112,6 +109,9 @@ class OptionsFrame(customtkinter.CTkFrame):
                                              variable=combobox_var)
         combobox.pack(padx=20, pady=10,)
 
+        label_Input = customtkinter.CTkLabel(
+            master=self, text='Voice: ')
+        label_Input.pack(padx=20, pady=10)
         combobox_var = customtkinter.StringVar(
             value=self.default_voice)
         STTS.voice_name = self.default_voice
