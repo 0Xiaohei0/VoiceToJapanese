@@ -1,7 +1,8 @@
 # Voice To Japanese
 (Please unmute the video)
 
-https://user-images.githubusercontent.com/24196833/222926826-1128e6cd-a016-4ca8-81fa-f32cf595ec98.mp4
+
+https://user-images.githubusercontent.com/24196833/223325680-87ec37f3-7f15-4b83-a288-2d753ca4b4a3.mp4
 
 Voice To Japanese is a python script that turns your microphone input into synthesized audio in Japanese. The Japanese audio output can redirected to your in-game voice chat, discord etc. via a virtual audio cable. It uses OpenAI Whisper API to transcribe microphone input into text. The text is then passed to DeepL Translate to convert into Japanese. Lastly Voice Vox is used to synthesize the Japanese audio output. 
 
