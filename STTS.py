@@ -144,6 +144,7 @@ def start_record_auto(stop_recording_event):
 def stop_record_auto():
     global auto_recording
     auto_recording = False
+    log_message("Recording Stopped")
 
 
 def recognize_from_microphone():
@@ -160,7 +161,7 @@ def recognize_from_microphone():
 
     log_message("Speak into your microphone.")
     while True:
-        speech_recognition_result = speech_recognizer.recognize_once()
+        speech_recognition_result = speech_recognizer.recognize_once_async().get()
 
         if speech_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
             log_message("Recognized: {}".format(
@@ -361,10 +362,3 @@ def log_message(message_text):
     global logging_eventhandlers
     for eventhandler in logging_eventhandlers:
         eventhandler(message_text)
-
-
-def set_voice(voice_type, voice_key):
-    if (voice_type == VoiceType.MICROSOFT_AZURE):
-        print("azure")
-    elif (voice_type == VoiceType.VOICE_VOX):
-        print("voicevox")

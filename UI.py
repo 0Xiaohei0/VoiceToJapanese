@@ -34,6 +34,8 @@ class ConsoleFrame(customtkinter.CTkFrame):
         super().__init__(master, **kwargs)
         self.isRecording = False
         self.stop_recording_event = Event()
+        self.thread = Thread(target=STTS.start_record_auto,
+                             args=(self.stop_recording_event,))
         # add widgets onto the frame...
         self.textbox = customtkinter.CTkTextbox(self, width=400, height=400)
         self.textbox.grid(row=0, column=0, rowspan=2, columnspan=2)
@@ -74,9 +76,10 @@ class ConsoleFrame(customtkinter.CTkFrame):
             self.recordButton.configure(
                 text="Stop Recording", fg_color='#fc7b5b')
             self.isRecording = True
-            thread = Thread(target=STTS.start_record_auto,
-                            args=(self.stop_recording_event,))
-            thread.start()
+            self.stop_recording_event.clear()
+            self.thread = Thread(target=STTS.start_record_auto,
+                                 args=(self.stop_recording_event,))
+            self.thread.start()
         self.recordButton.grid(row=3, column=0, pady=10)
 
     def play_original_callback(self):
