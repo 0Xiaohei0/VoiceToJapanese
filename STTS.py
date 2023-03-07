@@ -16,9 +16,66 @@ recording = False
 auto_recording = False
 logging_eventhandlers = []
 
-inputLanguage = 'en'
-outputLanguage = 'ja'
-voice_name = ''
+voice_name = '四国めたん'
+input_language_name = 'English'
+
+
+class VoiceVoxSpeaker(Enum):
+    四国めたん_1 = 2
+    四国めたん_2 = 0
+    四国めたん_3 = 6
+    四国めたん_4 = 4
+    四国めたん_5 = 36
+    四国めたん_6 = 37
+
+    春日部つむぎ = 8
+    雨晴はう = 10
+    冥鳴ひまり = 14
+
+    九州そら_1 = 16
+    九州そら_2 = 15
+    九州そら_3 = 17
+    九州そら_4 = 19
+
+    もち子さん = 20
+    剣崎雌雄 = 21  # male
+
+    ナースロボタイプ_1 = 47
+    ナースロボタイプ_2 = 48
+    ナースロボタイプ_3 = 49
+    ナースロボタイプ_4 = 50
+
+    小夜SAYO = 46
+    櫻歌ミコ_1 = 43
+    櫻歌ミコ_2 = 44
+    櫻歌ミコ_3 = 45
+
+    No7_1 = 29
+    No7_2 = 30
+    No7_3 = 31
+
+
+class VoiceType(Enum):
+    MICROSOFT_AZURE = 0
+    VOICE_VOX = 1
+
+
+class Voice():
+    def __init__(self, voice_type, voice_id, voice_language):
+        self.voice_type = voice_type
+        self.voice_id = voice_id
+        self.voice_language = voice_language
+
+
+voicename_to_callparam_dict = {
+    "四国めたん": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.四国めたん_1.value, "Japanese"),
+    "JP-Aoi": Voice(VoiceType.MICROSOFT_AZURE.value, "ja-JP-AoiNeural", "Japanese"),
+    "CN-Xiaoyi": Voice(VoiceType.MICROSOFT_AZURE.value, "zh-CN-XiaoyiNeural", "Chinese"),
+}
+
+language_dict = {'English': "en-US",
+                 "Japanese": "ja-JP",
+                 "Chinese": "zh-CN"}
 
 
 def start_record():
@@ -85,10 +142,12 @@ def stop_record_auto():
 
 
 def recognize_from_microphone():
+    global input_language_name
     # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
     speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
         'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
-    speech_config.speech_recognition_language = "en-US"
+    speech_config.speech_recognition_language = language_dict[input_language_name]
+    print(language_dict[input_language_name])
 
     audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
     speech_recognizer = speechsdk.SpeechRecognizer(
@@ -114,52 +173,6 @@ def recognize_from_microphone():
                     cancellation_details.error_details))
                 print(
                     "Did you set the speech resource key and region values?")
-
-
-class VoiceVoxSpeaker(Enum):
-    四国めたん_1 = 2
-    四国めたん_2 = 0
-    四国めたん_3 = 6
-    四国めたん_4 = 4
-    四国めたん_5 = 36
-    四国めたん_6 = 37
-
-    春日部つむぎ = 8
-    雨晴はう = 10
-    冥鳴ひまり = 14
-
-    九州そら_1 = 16
-    九州そら_2 = 15
-    九州そら_3 = 17
-    九州そら_4 = 19
-
-    もち子さん = 20
-    剣崎雌雄 = 21  # male
-
-    ナースロボタイプ_1 = 47
-    ナースロボタイプ_2 = 48
-    ナースロボタイプ_3 = 49
-    ナースロボタイプ_4 = 50
-
-    小夜SAYO = 46
-    櫻歌ミコ_1 = 43
-    櫻歌ミコ_2 = 44
-    櫻歌ミコ_3 = 45
-
-    No7_1 = 29
-    No7_2 = 30
-    No7_3 = 31
-
-
-class VoiceType(Enum):
-    MICROSOFT_AZURE = 0
-    VOICE_VOX = 1
-
-
-voicename_to_callparam_dict = {
-    "四国めたん": {'voice_type': VoiceType.VOICE_VOX.value, 'voice_id': VoiceVoxSpeaker.四国めたん_1.value},
-    "JP-Aoi": {'voice_type': VoiceType.MICROSOFT_AZURE.value, 'voice_id': "ja-JP-AoiNeural"}
-}
 
 
 def sendAudioToWhisper(file_name, input_language):
@@ -290,14 +303,13 @@ def start_STTS_pipeline(
     log_message('')
 
 
-def start_TTS_pipeline(input_text, outputLanguage='ja'
-                       ):
+def start_TTS_pipeline(input_text):
     global voice_name
-    global inputLanguage
+    inputLanguage = language_dict[input_language_name][:2]
     voiceparam = voicename_to_callparam_dict[voice_name]
-    use_microsoft_azure_tts = voiceparam['voice_type'] == VoiceType.MICROSOFT_AZURE.value
-    print(
-        f"VoiceType.MICROSOFT_AZURE.value : {VoiceType.MICROSOFT_AZURE.value}, voiceparam['voice_type']: {voiceparam['voice_type']}")
+    outputLanguage = language_dict[voiceparam.voice_language][:2]
+    print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
+    use_microsoft_azure_tts = voiceparam.voice_type == VoiceType.MICROSOFT_AZURE.value
     translate = inputLanguage != outputLanguage
     if (translate):
         input_processed_text = sendTextToTranslationService(
@@ -305,10 +317,10 @@ def start_TTS_pipeline(input_text, outputLanguage='ja'
     else:
         input_processed_text = input_text
     if (use_microsoft_azure_tts):
-        CallAzureTTS(input_processed_text, voiceparam['voice_id'])
+        CallAzureTTS(input_processed_text, voiceparam.voice_id)
     else:
         AudioResponse = sendTextToSyntheizer(
-            input_processed_text, voiceparam['voice_id'])
+            input_processed_text, voiceparam.voice_id)
         PlayAudio(AudioResponse.content)
 
     if (inputLanguage != 'en'):
@@ -320,10 +332,10 @@ def start_TTS_pipeline(input_text, outputLanguage='ja'
     text_ja = romajitable.to_kana(input_text).katakana
     text_ja = text_ja.replace('・', '')
     if (use_microsoft_azure_tts):
-        CallAzureTTS(text_ja, voiceparam['voice_id'])
+        CallAzureTTS(text_ja, voiceparam.voice_id)
     else:
         PlayAudio(sendTextToSyntheizer(
-            text_ja, voiceparam['voice_id']).content)
+            text_ja, voiceparam.voice_id).content)
 
     log_message(f'playing input: {input_processed_text}')
 

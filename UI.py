@@ -89,32 +89,21 @@ class OptionsFrame(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.default_voice = "四国めたん"
-        self.voicenames = ["JP-Aoi", "四国めたん"]
+        self.voicenames = ["JP-Aoi", "四国めたん", "CN-Xiaoyi"]
+        self.default_input_anguage = "English"
+        self.input_anguage = ["English", "Japanese", "Chinese"]
 
         label_Input = customtkinter.CTkLabel(
             master=self, text='Input Language: ')
         label_Input.pack(padx=20, pady=10)
-        combobox_var = customtkinter.StringVar(value="Auto")
+        combobox_var = customtkinter.StringVar(
+            value=self.default_input_anguage)
         combobox = customtkinter.CTkComboBox(master=self,
-                                             values=["Auto", "option 2"],
+                                             values=self.input_anguage,
                                              command=self.input_dropdown_callbakck,
                                              variable=combobox_var)
         combobox.pack(padx=20, pady=10,)
 
-        label_Output = customtkinter.CTkLabel(
-            master=self, text='Output Language: ')
-        label_Output.pack(padx=20)
-        combobox_var = customtkinter.StringVar(
-            value="Auto")
-        combobox = customtkinter.CTkComboBox(master=self,
-                                             values=["Auto", "option 2"],
-                                             command=self.output_dropdown_callbakck,
-                                             variable=combobox_var)
-        combobox.pack(padx=20, pady=10)
-
-        label_Output = customtkinter.CTkLabel(
-            master=self, text='Voice: ')
-        label_Output.pack(padx=20)
         combobox_var = customtkinter.StringVar(
             value=self.default_voice)
         STTS.voice_name = self.default_voice
@@ -125,13 +114,12 @@ class OptionsFrame(customtkinter.CTkFrame):
         combobox.pack(padx=20, pady=10)
 
     def input_dropdown_callbakck(self, choice):
-        print("input_dropdown_callbakck")
+        STTS.input_language_name = choice
 
     def output_dropdown_callbakck(self, choice):
-        print("input_dropdown_callbakck")
+        STTS.output_language_name = choice
 
     def voice_dropdown_callbakck(self, choice):
-        print(f"setting voicename to {choice}")
         STTS.voice_name = choice
 
 
