@@ -232,11 +232,11 @@ def sendTextToTranslationService(text, outputLanguage):
 
 
 def sendTextToSyntheizer(text, speaker_id):
-    url = f"http://127.0.0.1:50021/audio_query?text={text}&speaker={speaker_id}"
+    url = f"http://20.246.162.198:50021/audio_query?text={text}&speaker={speaker_id}"
 
     VoiceTextResponse = requests.request("POST", url)
 
-    url = f"http://127.0.0.1:50021/synthesis?speaker={speaker_id}"
+    url = f"http://20.246.162.198:50021/synthesis?speaker={speaker_id}"
     headers = {
         'Content-Type': 'application/json'
     }
@@ -319,11 +319,14 @@ def start_STTS_pipeline(
 
 
 def start_TTS_pipeline(input_text):
+    if (input_text == ''):
+        return
+    log_message(f'Input: {input_text}')
     global voice_name
     inputLanguage = language_dict[input_language_name][:2]
     voiceparam = voicename_to_callparam_dict[voice_name]
     outputLanguage = language_dict[voiceparam.voice_language][:2]
-    print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
+    # print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
     use_microsoft_azure_tts = voiceparam.voice_type == VoiceType.MICROSOFT_AZURE.value
     translate = inputLanguage != outputLanguage
     if (translate):
