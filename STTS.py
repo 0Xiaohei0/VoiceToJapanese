@@ -9,6 +9,12 @@ import azure.cognitiveservices.speech as speechsdk
 from enum import Enum
 import romajitable
 
+SPEECH_KEY = os.environ.get('SPEECH_KEY')
+SPEECH_REGION = os.environ.get('SPEECH_REGION')
+DEEPL_TOKEN = os.environ.get("translation-service-api-token")
+
+
+
 
 MIC_OUTPUT_FILENAME = "Output/output.mp3"
 audio = pyaudio.PyAudio()
@@ -107,8 +113,7 @@ language_dict = {'English': "en-US",
                  "Japanese": "ja-JP",
                  "Chinese": "zh-CN"}
 
-speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
-    'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
+speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
 speech_config.speech_recognition_language = language_dict[input_language_name]
 audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
 speech_recognizer = speechsdk.SpeechRecognizer(
@@ -210,10 +215,10 @@ def sendAudioToWhisper(file_name, input_language):
 
 
 def sendTextToTranslationService(text, outputLanguage):
-    token = os.environ.get("translation-service-api-token")
+    
     # Send text to translation service
     headers = {
-        'Authorization': f'DeepL-Auth-Key {token}',
+        'Authorization': f'DeepL-Auth-Key {DEEPL_TOKEN}',
         'Content-Type': 'application/x-www-form-urlencoded',
     }
     data = f'text={text}&target_lang={outputLanguage.upper()}'
@@ -249,8 +254,7 @@ def sendTextToSyntheizer(text, speaker_id):
 
 def CallAzureTTS(text, azure_tts_voice_name):
     # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
-    speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
-        'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
+    speech_config = speechsdk.SpeechConfig(SPEECH_KEY, SPEECH_REGION)
     audio_config = speechsdk.audio.AudioOutputConfig(
         use_default_speaker=True)
 
