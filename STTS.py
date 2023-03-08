@@ -12,6 +12,8 @@ import romajitable
 SPEECH_KEY = os.environ.get('SPEECH_KEY')
 SPEECH_REGION = os.environ.get('SPEECH_REGION')
 DEEPL_TOKEN = os.environ.get("translation-service-api-token")
+VOICE_VOX_URL = "20.85.153.114"
+
 
 
 
@@ -237,11 +239,11 @@ def sendTextToTranslationService(text, outputLanguage):
 
 
 def sendTextToSyntheizer(text, speaker_id):
-    url = f"http://20.246.162.198:50021/audio_query?text={text}&speaker={speaker_id}"
+    url = f"http://{VOICE_VOX_URL}:50021/audio_query?text={text}&speaker={speaker_id}"
 
     VoiceTextResponse = requests.request("POST", url)
 
-    url = f"http://20.246.162.198:50021/synthesis?speaker={speaker_id}"
+    url = f"http://{VOICE_VOX_URL}:50021/synthesis?speaker={speaker_id}"
     headers = {
         'Content-Type': 'application/json'
     }
