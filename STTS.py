@@ -1,4 +1,5 @@
 import os
+import time
 import pyaudio
 from pydub import AudioSegment
 from pydub.playback import play
@@ -7,6 +8,14 @@ import json
 import azure.cognitiveservices.speech as speechsdk
 from enum import Enum
 import romajitable
+
+SPEECH_KEY = os.environ.get('SPEECH_KEY')
+SPEECH_REGION = os.environ.get('SPEECH_REGION')
+DEEPL_TOKEN = os.environ.get("translation-service-api-token")
+VOICE_VOX_URL = "20.85.153.114"
+
+
+
 
 
 MIC_OUTPUT_FILENAME = "Output/output.mp3"
@@ -106,6 +115,16 @@ language_dict = {'English': "en-US",
                  "Japanese": "ja-JP",
                  "Chinese": "zh-CN"}
 
+speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
+speech_config.speech_recognition_language = language_dict[input_language_name]
+audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+speech_recognizer = speechsdk.SpeechRecognizer(
+    speech_config=speech_config, audio_config=audio_config)
+# speech_recognizer.recognizing.connect(
+#     lambda evt: print(f'RECOGNIZING: {evt.result.text}'))
+speech_recognizer.recognized.connect(
+    lambda evt: start_TTS_pipeline(evt.result.text))
+
 
 def start_record():
     log_message("Recording...")
@@ -155,54 +174,27 @@ def stop_record():
     )
 
 
-def start_record_auto(stop_recording_event):
+def start_record_auto():
+    log_message("Recording...")
     global auto_recording
+    global speech_recognizer
     auto_recording = True
+    speech_recognizer.start_continuous_recognition()
     while auto_recording:
-        if (stop_recording_event.is_set()):
-            break
-        text = recognize_from_microphone()
-        start_TTS_pipeline(text)
+        speech_config.speech_recognition_language = language_dict[input_language_name]
+        time.sleep(.5)
 
 
 def stop_record_auto():
     global auto_recording
+    global speech_recognizer
     auto_recording = False
+    speech_recognizer.stop_continuous_recognition()
     log_message("Recording Stopped")
 
 
-def recognize_from_microphone():
-    global input_language_name
-    # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
-    speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
-        'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
-    speech_config.speech_recognition_language = language_dict[input_language_name]
-    print(language_dict[input_language_name])
-
-    audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
-    speech_recognizer = speechsdk.SpeechRecognizer(
-        speech_config=speech_config, audio_config=audio_config)
-
-    log_message("Speak into your microphone.")
-    while True:
-        speech_recognition_result = speech_recognizer.recognize_once_async().get()
-
-        if speech_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
-            log_message("Recognized: {}".format(
-                speech_recognition_result.text))
-            return speech_recognition_result.text
-        elif speech_recognition_result.reason == speechsdk.ResultReason.NoMatch:
-            print("No speech could be recognized: {}".format(
-                speech_recognition_result.no_match_details))
-        elif speech_recognition_result.reason == speechsdk.ResultReason.Canceled:
-            cancellation_details = speech_recognition_result.cancellation_details
-            print("Speech Recognition canceled: {}".format(
-                cancellation_details.reason))
-            if cancellation_details.reason == speechsdk.CancellationReason.Error:
-                print("Error details: {}".format(
-                    cancellation_details.error_details))
-                print(
-                    "Did you set the speech resource key and region values?")
+speech_recognizer.session_stopped.connect(stop_record_auto)
+speech_recognizer.canceled.connect(stop_record_auto)
 
 
 def sendAudioToWhisper(file_name, input_language):
@@ -225,10 +217,10 @@ def sendAudioToWhisper(file_name, input_language):
 
 
 def sendTextToTranslationService(text, outputLanguage):
-    token = os.environ.get("translation-service-api-token")
+    
     # Send text to translation service
     headers = {
-        'Authorization': f'DeepL-Auth-Key {token}',
+        'Authorization': f'DeepL-Auth-Key {DEEPL_TOKEN}',
         'Content-Type': 'application/x-www-form-urlencoded',
     }
     data = f'text={text}&target_lang={outputLanguage.upper()}'
@@ -247,11 +239,11 @@ def sendTextToTranslationService(text, outputLanguage):
 
 
 def sendTextToSyntheizer(text, speaker_id):
-    url = f"http://127.0.0.1:50021/audio_query?text={text}&speaker={speaker_id}"
+    url = f"http://{VOICE_VOX_URL}:50021/audio_query?text={text}&speaker={speaker_id}"
 
     VoiceTextResponse = requests.request("POST", url)
 
-    url = f"http://127.0.0.1:50021/synthesis?speaker={speaker_id}"
+    url = f"http://{VOICE_VOX_URL}:50021/synthesis?speaker={speaker_id}"
     headers = {
         'Content-Type': 'application/json'
     }
@@ -264,8 +256,7 @@ def sendTextToSyntheizer(text, speaker_id):
 
 def CallAzureTTS(text, azure_tts_voice_name):
     # This example requires environment variables named "SPEECH_KEY" and "SPEECH_REGION"
-    speech_config = speechsdk.SpeechConfig(subscription=os.environ.get(
-        'SPEECH_KEY'), region=os.environ.get('SPEECH_REGION'))
+    speech_config = speechsdk.SpeechConfig(SPEECH_KEY, SPEECH_REGION)
     audio_config = speechsdk.audio.AudioOutputConfig(
         use_default_speaker=True)
 
@@ -334,11 +325,14 @@ def start_STTS_pipeline(
 
 
 def start_TTS_pipeline(input_text):
+    if (input_text == ''):
+        return
+    log_message(f'Input: {input_text}')
     global voice_name
     inputLanguage = language_dict[input_language_name][:2]
     voiceparam = voicename_to_callparam_dict[voice_name]
     outputLanguage = language_dict[voiceparam.voice_language][:2]
-    print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
+    # print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
     use_microsoft_azure_tts = voiceparam.voice_type == VoiceType.MICROSOFT_AZURE.value
     translate = inputLanguage != outputLanguage
     if (translate):
