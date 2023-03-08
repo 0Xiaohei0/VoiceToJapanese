@@ -15,9 +15,6 @@ DEEPL_TOKEN = os.environ.get("translation-service-api-token")
 VOICE_VOX_URL = "20.85.153.114"
 
 
-
-
-
 MIC_OUTPUT_FILENAME = "Output/output.mp3"
 audio = pyaudio.PyAudio()
 
@@ -32,6 +29,8 @@ input_language_name = 'English'
 last_input_text = ''
 last_voice_param = None
 last_input_language = ''
+
+speech_recognizer = None
 
 
 class VoiceVoxSpeaker(Enum):
@@ -115,15 +114,21 @@ language_dict = {'English': "en-US",
                  "Japanese": "ja-JP",
                  "Chinese": "zh-CN"}
 
-speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
-speech_config.speech_recognition_language = language_dict[input_language_name]
-audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
-speech_recognizer = speechsdk.SpeechRecognizer(
-    speech_config=speech_config, audio_config=audio_config)
-# speech_recognizer.recognizing.connect(
-#     lambda evt: print(f'RECOGNIZING: {evt.result.text}'))
-speech_recognizer.recognized.connect(
-    lambda evt: start_TTS_pipeline(evt.result.text))
+
+def initialize_speech_recognizer():
+    global speech_recognizer
+    speech_config = speechsdk.SpeechConfig(
+        subscription=SPEECH_KEY, region=SPEECH_REGION)
+    speech_config.speech_recognition_language = language_dict[input_language_name]
+    audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+    speech_recognizer = speechsdk.SpeechRecognizer(
+        speech_config=speech_config, audio_config=audio_config)
+    # speech_recognizer.recognizing.connect(
+    #     lambda evt: print(f'RECOGNIZING: {evt.result.text}'))
+    speech_recognizer.recognized.connect(
+        lambda evt: start_TTS_pipeline(evt.result.text))
+    speech_recognizer.session_stopped.connect(stop_record_auto)
+    speech_recognizer.canceled.connect(stop_record_auto)
 
 
 def start_record():
@@ -180,9 +185,6 @@ def start_record_auto():
     global speech_recognizer
     auto_recording = True
     speech_recognizer.start_continuous_recognition()
-    while auto_recording:
-        speech_config.speech_recognition_language = language_dict[input_language_name]
-        time.sleep(.5)
 
 
 def stop_record_auto():
@@ -191,10 +193,6 @@ def stop_record_auto():
     auto_recording = False
     speech_recognizer.stop_continuous_recognition()
     log_message("Recording Stopped")
-
-
-speech_recognizer.session_stopped.connect(stop_record_auto)
-speech_recognizer.canceled.connect(stop_record_auto)
 
 
 def sendAudioToWhisper(file_name, input_language):
@@ -217,7 +215,7 @@ def sendAudioToWhisper(file_name, input_language):
 
 
 def sendTextToTranslationService(text, outputLanguage):
-    
+
     # Send text to translation service
     headers = {
         'Authorization': f'DeepL-Auth-Key {DEEPL_TOKEN}',
@@ -380,3 +378,18 @@ def log_message(message_text):
     global logging_eventhandlers
     for eventhandler in logging_eventhandlers:
         eventhandler(message_text)
+
+
+def change_input_language(input_lang_name):
+    global input_language_name
+    global auto_recording
+    input_language_name = input_lang_name
+    if (auto_recording):
+        stop_record_auto()
+        initialize_speech_recognizer()
+        start_record_auto()
+    else:
+        initialize_speech_recognizer()
+
+
+initialize_speech_recognizer()

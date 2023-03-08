@@ -75,12 +75,12 @@ class ConsoleFrame(customtkinter.CTkFrame):
             self.recordButton.configure(
                 text="Stop Recording", fg_color='#fc7b5b')
             self.isRecording = True
-            self.thread = Thread(target=STTS.start_record_auto)
-            self.thread.start()
+            STTS.start_record_auto()
         self.recordButton.grid(row=3, column=0, pady=10)
 
     def play_original_callback(self):
-        STTS.playOriginal()
+        thread = Thread(target=STTS.playOriginal())
+        thread.start()
 
     def log_message_on_console(self, message_text):
         # insert at line 0 character 0
@@ -122,7 +122,7 @@ class OptionsFrame(customtkinter.CTkFrame):
         combobox.pack(padx=20, pady=10)
 
     def input_dropdown_callbakck(self, choice):
-        STTS.input_language_name = choice
+        STTS.change_input_language(choice)
 
     def voice_dropdown_callbakck(self, choice):
         STTS.voice_name = choice
