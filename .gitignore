@@ -3,4 +3,5 @@ Audio/*
 Output/*
 .env
 *.txt
+__*
 test.py

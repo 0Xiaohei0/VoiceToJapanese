@@ -1,5 +1,4 @@
 import os
-import time
 import pyaudio
 from pydub import AudioSegment
 from pydub.playback import play
@@ -9,17 +8,16 @@ import azure.cognitiveservices.speech as speechsdk
 from enum import Enum
 import romajitable
 
-SPEECH_KEY = os.environ.get('SPEECH_KEY')
+SPEECH_KEY = os.environ.get('SPEECH_KEY_P')
 SPEECH_REGION = os.environ.get('SPEECH_REGION')
 DEEPL_TOKEN = os.environ.get("translation-service-api-token")
 VOICE_VOX_URL = "20.85.153.114"
-
-
-
-
+VOICE_VOX_URL_LOCAL = "127.0.0.1"
+use_local_voice_vox = False
 
 MIC_OUTPUT_FILENAME = "Output/output.mp3"
 audio = pyaudio.PyAudio()
+
 
 recording = False
 auto_recording = False
@@ -32,6 +30,8 @@ input_language_name = 'English'
 last_input_text = ''
 last_voice_param = None
 last_input_language = ''
+
+speech_recognizer = None
 
 
 class VoiceVoxSpeaker(Enum):
@@ -115,15 +115,40 @@ language_dict = {'English': "en-US",
                  "Japanese": "ja-JP",
                  "Chinese": "zh-CN"}
 
-speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
-speech_config.speech_recognition_language = language_dict[input_language_name]
-audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
-speech_recognizer = speechsdk.SpeechRecognizer(
-    speech_config=speech_config, audio_config=audio_config)
-# speech_recognizer.recognizing.connect(
-#     lambda evt: print(f'RECOGNIZING: {evt.result.text}'))
-speech_recognizer.recognized.connect(
-    lambda evt: start_TTS_pipeline(evt.result.text))
+
+def initialize_speech_recognizer():
+    global speech_recognizer
+    speech_config = speechsdk.SpeechConfig(
+        subscription=SPEECH_KEY, region=SPEECH_REGION)
+    speech_config.speech_recognition_language = language_dict[input_language_name]
+    audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+    speech_recognizer = speechsdk.SpeechRecognizer(
+        speech_config=speech_config, audio_config=audio_config)
+    # speech_recognizer.recognizing.connect(
+    #     lambda evt: print(f'RECOGNIZING: {evt.result.text}'))
+    speech_recognizer.recognized.connect(
+        lambda evt: start_TTS_pipeline(evt.result.text))
+    speech_recognizer.canceled.connect(showReconitionErrors)
+
+    speech_recognizer.session_stopped.connect(stop_record_auto)
+    speech_recognizer.canceled.connect(stop_record_auto)
+
+
+def showReconitionErrors(speech_recognition_result):
+    print(speech_recognition_result)
+    speech_recognition_result = speech_recognition_result.result
+    if speech_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
+        log_message("Recognized: {}".format(speech_recognition_result.text))
+    elif speech_recognition_result.reason == speechsdk.ResultReason.NoMatch:
+        log_message("No speech could be recognized: {}".format(
+            speech_recognition_result.no_match_details))
+    elif speech_recognition_result.reason == speechsdk.ResultReason.Canceled:
+        cancellation_details = speech_recognition_result.cancellation_details
+        log_message("Speech Recognition canceled: {}".format(
+            cancellation_details.reason))
+        if cancellation_details.reason == speechsdk.CancellationReason.Error:
+            log_message("Error details: {}".format(
+                cancellation_details.error_details))
 
 
 def start_record():
@@ -180,9 +205,6 @@ def start_record_auto():
     global speech_recognizer
     auto_recording = True
     speech_recognizer.start_continuous_recognition()
-    while auto_recording:
-        speech_config.speech_recognition_language = language_dict[input_language_name]
-        time.sleep(.5)
 
 
 def stop_record_auto():
@@ -191,10 +213,6 @@ def stop_record_auto():
     auto_recording = False
     speech_recognizer.stop_continuous_recognition()
     log_message("Recording Stopped")
-
-
-speech_recognizer.session_stopped.connect(stop_record_auto)
-speech_recognizer.canceled.connect(stop_record_auto)
 
 
 def sendAudioToWhisper(file_name, input_language):
@@ -217,7 +235,7 @@ def sendAudioToWhisper(file_name, input_language):
 
 
 def sendTextToTranslationService(text, outputLanguage):
-    
+
     # Send text to translation service
     headers = {
         'Authorization': f'DeepL-Auth-Key {DEEPL_TOKEN}',
@@ -239,11 +257,14 @@ def sendTextToTranslationService(text, outputLanguage):
 
 
 def sendTextToSyntheizer(text, speaker_id):
-    url = f"http://{VOICE_VOX_URL}:50021/audio_query?text={text}&speaker={speaker_id}"
+    current_voicevox_url = VOICE_VOX_URL
+    if (use_local_voice_vox):
+        current_voicevox_url = VOICE_VOX_URL_LOCAL
+    url = f"http://{current_voicevox_url}:50021/audio_query?text={text}&speaker={speaker_id}"
 
     VoiceTextResponse = requests.request("POST", url)
 
-    url = f"http://{VOICE_VOX_URL}:50021/synthesis?speaker={speaker_id}"
+    url = f"http://{current_voicevox_url}:50021/synthesis?speaker={speaker_id}"
     headers = {
         'Content-Type': 'application/json'
     }
@@ -380,3 +401,18 @@ def log_message(message_text):
     global logging_eventhandlers
     for eventhandler in logging_eventhandlers:
         eventhandler(message_text)
+
+
+def change_input_language(input_lang_name):
+    global input_language_name
+    global auto_recording
+    input_language_name = input_lang_name
+    if (auto_recording):
+        stop_record_auto()
+        initialize_speech_recognizer()
+        start_record_auto()
+    else:
+        initialize_speech_recognizer()
+
+
+initialize_speech_recognizer()
