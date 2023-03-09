@@ -8,7 +8,7 @@ import azure.cognitiveservices.speech as speechsdk
 from enum import Enum
 import romajitable
 
-SPEECH_KEY = os.environ.get('SPEECH_KEY')
+SPEECH_KEY = os.environ.get('SPEECH_KEY_P')
 SPEECH_REGION = os.environ.get('SPEECH_REGION')
 DEEPL_TOKEN = os.environ.get("translation-service-api-token")
 # VOICE_VOX_URL = "20.85.153.114"50021
@@ -126,7 +126,6 @@ def initialize_speech_recognizer():
     #     lambda evt: print(f'RECOGNIZING: {evt.result.text}'))
     speech_recognizer.recognized.connect(
         lambda evt: start_TTS_pipeline(evt.result.text))
-    speech_recognizer.session_stopped.connect(showReconitionErrors)
     speech_recognizer.canceled.connect(showReconitionErrors)
 
     speech_recognizer.session_stopped.connect(stop_record_auto)

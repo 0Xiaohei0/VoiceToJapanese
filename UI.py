@@ -12,6 +12,7 @@ class Pages(Enum):
 
 
 current_page = Pages.AUDIO_INPUT
+pageChange_eventhandlers = []
 
 
 class SidebarFrame(customtkinter.CTkFrame):
@@ -58,6 +59,10 @@ class SidebarFrame(customtkinter.CTkFrame):
     def change_page(self, page):
         global current_page
         current_page = page
+
+        global pageChange_eventhandlers
+        for eventhandler in pageChange_eventhandlers:
+            eventhandler()
 
 
 class ConsoleFrame(customtkinter.CTkFrame):
@@ -128,6 +133,20 @@ class TextBoxFrame(customtkinter.CTkFrame):
         self.text_input = customtkinter.CTkTextbox(self, width=400, height=400)
         self.text_input.grid(row=0, column=0, rowspan=2, columnspan=2)
         self.text_input.insert(customtkinter.INSERT, self.default_message+'\n')
+        self.synthesizeButton = customtkinter.CTkButton(master=self,
+                                                        width=120,
+                                                        height=32,
+                                                        border_width=0,
+                                                        corner_radius=8,
+                                                        text="Synthesize",
+                                                        command=self.synthesizeButton_callback,
+                                                        fg_color='grey'
+                                                        )
+        self.synthesizeButton.grid(
+            row=3, column=0, padx=10, pady=10, sticky="w")
+
+    def synthesizeButton_callback(self):
+        STTS.start_TTS_pipeline(self.text_input.get("1.0", customtkinter.END))
 
 
 class OptionsFrame(customtkinter.CTkFrame):
@@ -169,6 +188,34 @@ class OptionsFrame(customtkinter.CTkFrame):
         STTS.voice_name = choice
 
 
+class Page(customtkinter.CTkFrame):
+    def __init__(self, *args, **kwargs):
+        customtkinter.CTkFrame.__init__(self, *args, **kwargs)
+
+    def show(self):
+        self.lift()
+
+
+class AudioInputPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        console = ConsoleFrame(master=self, width=500, corner_radius=8)
+        console.grid(row=0, column=1, padx=20, pady=20,
+                     sticky="nswe")
+        options = OptionsFrame(master=self)
+        options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
+
+
+class TextInputPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        textbox = TextBoxFrame(master=self, width=500, corner_radius=8)
+        textbox.grid(row=0, column=1, padx=20, pady=20,
+                     sticky="nswe")
+        options = OptionsFrame(master=self)
+        options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
+
+
 class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
@@ -179,19 +226,26 @@ class App(customtkinter.CTk):
         sidebar = SidebarFrame(master=self, width=100)
         sidebar.grid(row=0, column=0, padx=20, pady=20, sticky="nswe")
 
-        global current_page
-        if (current_page == Pages.AUDIO_INPUT):
-            console = ConsoleFrame(master=self, width=500, corner_radius=8)
-            console.grid(row=0, column=1, padx=20, pady=20,
-                         sticky="nswe")
-            options = OptionsFrame(master=self)
-            options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
-        elif (current_page == Pages.TEXT_INPUT):
-            textbox = TextBoxFrame(master=self, width=500, corner_radius=8)
-            textbox.grid(row=0, column=1, padx=20, pady=20,
-                         sticky="nswe")
-            options = OptionsFrame(master=self)
-            options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
+        audioInputPage = AudioInputPage(self)
+        textInputPage = TextInputPage(self)
+
+        container = customtkinter.CTkFrame(
+            self, bg_color='#fafafa')
+        container.grid(row=0, column=1, padx=20, pady=20, sticky="nswe")
+
+        audioInputPage.place(in_=container, x=0, y=0)
+        textInputPage.place(in_=container, x=0, y=0)
+
+        audioInputPage.show()
+        global pageChange_eventhandlers
+
+        def showPage():
+            global current_page
+            if (current_page == Pages.AUDIO_INPUT):
+                audioInputPage.show()
+            elif (current_page == Pages.TEXT_INPUT):
+                textInputPage.show()
+        pageChange_eventhandlers.append(showPage)
 
 
 def optionmenu_callback(choice):
@@ -199,4 +253,5 @@ def optionmenu_callback(choice):
 
 
 app = App()
+app.configure(background='#fafafa')
 app.mainloop()
