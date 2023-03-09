@@ -216,6 +216,20 @@ class TextInputPage(Page):
         options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
 
 
+class SettingsPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        self.use_local_voice_vox = customtkinter.BooleanVar(self, 1)
+        self.check_var = customtkinter.BooleanVar(self, False)
+
+        use_voicevox_local_checkbox = customtkinter.CTkCheckBox(master=self, text="Is running voicevox locally", command=self.set_use_voicevox_local,
+                                                                variable=self.check_var, onvalue=True, offvalue=False)
+        use_voicevox_local_checkbox.pack(padx=20, pady=10)
+
+    def set_use_voicevox_local(self):
+        STTS.use_local_voice_vox = self.check_var.get()
+
+
 class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
@@ -228,13 +242,14 @@ class App(customtkinter.CTk):
 
         audioInputPage = AudioInputPage(self)
         textInputPage = TextInputPage(self)
-
+        settingsPage = SettingsPage(self)
         container = customtkinter.CTkFrame(
-            self, bg_color='#fafafa')
+            self, width=700, height=700, bg_color='#fafafa')
         container.grid(row=0, column=1, padx=20, pady=20, sticky="nswe")
 
         audioInputPage.place(in_=container, x=0, y=0)
         textInputPage.place(in_=container, x=0, y=0)
+        settingsPage.place(in_=container, x=0, y=0)
 
         audioInputPage.show()
         global pageChange_eventhandlers
@@ -242,9 +257,14 @@ class App(customtkinter.CTk):
         def showPage():
             global current_page
             if (current_page == Pages.AUDIO_INPUT):
+                container.lift()
                 audioInputPage.show()
             elif (current_page == Pages.TEXT_INPUT):
+                container.lift()
                 textInputPage.show()
+            elif (current_page == Pages.SETTINGS):
+                container.lift()
+                settingsPage.show()
         pageChange_eventhandlers.append(showPage)
 
 

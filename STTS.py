@@ -11,11 +11,13 @@ import romajitable
 SPEECH_KEY = os.environ.get('SPEECH_KEY_P')
 SPEECH_REGION = os.environ.get('SPEECH_REGION')
 DEEPL_TOKEN = os.environ.get("translation-service-api-token")
-# VOICE_VOX_URL = "20.85.153.114"50021
-VOICE_VOX_URL = "127.0.0.1"
+VOICE_VOX_URL = "20.85.153.114"
+VOICE_VOX_URL_LOCAL = "127.0.0.1"
+use_local_voice_vox = False
 
 MIC_OUTPUT_FILENAME = "Output/output.mp3"
 audio = pyaudio.PyAudio()
+
 
 recording = False
 auto_recording = False
@@ -255,11 +257,14 @@ def sendTextToTranslationService(text, outputLanguage):
 
 
 def sendTextToSyntheizer(text, speaker_id):
-    url = f"http://{VOICE_VOX_URL}:50021/audio_query?text={text}&speaker={speaker_id}"
+    current_voicevox_url = VOICE_VOX_URL
+    if (use_local_voice_vox):
+        current_voicevox_url = VOICE_VOX_URL_LOCAL
+    url = f"http://{current_voicevox_url}:50021/audio_query?text={text}&speaker={speaker_id}"
 
     VoiceTextResponse = requests.request("POST", url)
 
-    url = f"http://{VOICE_VOX_URL}:50021/synthesis?speaker={speaker_id}"
+    url = f"http://{current_voicevox_url}:50021/synthesis?speaker={speaker_id}"
     headers = {
         'Content-Type': 'application/json'
     }
