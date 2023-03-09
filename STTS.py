@@ -1,5 +1,4 @@
 import os
-import time
 import pyaudio
 from pydub import AudioSegment
 from pydub.playback import play
@@ -127,8 +126,28 @@ def initialize_speech_recognizer():
     #     lambda evt: print(f'RECOGNIZING: {evt.result.text}'))
     speech_recognizer.recognized.connect(
         lambda evt: start_TTS_pipeline(evt.result.text))
+    speech_recognizer.session_stopped.connect(showReconitionErrors)
+    speech_recognizer.canceled.connect(showReconitionErrors)
+
     speech_recognizer.session_stopped.connect(stop_record_auto)
     speech_recognizer.canceled.connect(stop_record_auto)
+
+
+def showReconitionErrors(speech_recognition_result):
+    print(speech_recognition_result)
+    speech_recognition_result = speech_recognition_result.result
+    if speech_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
+        log_message("Recognized: {}".format(speech_recognition_result.text))
+    elif speech_recognition_result.reason == speechsdk.ResultReason.NoMatch:
+        log_message("No speech could be recognized: {}".format(
+            speech_recognition_result.no_match_details))
+    elif speech_recognition_result.reason == speechsdk.ResultReason.Canceled:
+        cancellation_details = speech_recognition_result.cancellation_details
+        log_message("Speech Recognition canceled: {}".format(
+            cancellation_details.reason))
+        if cancellation_details.reason == speechsdk.CancellationReason.Error:
+            log_message("Error details: {}".format(
+                cancellation_details.error_details))
 
 
 def start_record():
