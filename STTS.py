@@ -12,8 +12,8 @@ import romajitable
 SPEECH_KEY = os.environ.get('SPEECH_KEY')
 SPEECH_REGION = os.environ.get('SPEECH_REGION')
 DEEPL_TOKEN = os.environ.get("translation-service-api-token")
-VOICE_VOX_URL = "20.85.153.114"
-
+# VOICE_VOX_URL = "20.85.153.114"50021
+VOICE_VOX_URL = "127.0.0.1"
 
 MIC_OUTPUT_FILENAME = "Output/output.mp3"
 audio = pyaudio.PyAudio()

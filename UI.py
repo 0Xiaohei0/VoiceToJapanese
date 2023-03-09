@@ -2,31 +2,62 @@ from threading import Thread
 import customtkinter
 import STTS
 from threading import Event
+from enum import Enum
+
+
+class Pages(Enum):
+    AUDIO_INPUT = 0
+    TEXT_INPUT = 1
+    SETTINGS = 2
+
+
+current_page = Pages.AUDIO_INPUT
 
 
 class SidebarFrame(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
+        global current_page
         super().__init__(master, **kwargs)
 
-        button = customtkinter.CTkButton(master=self,
-                                         width=120,
-                                         height=32,
-                                         border_width=0,
-                                         corner_radius=0,
-                                         text="Main",
-                                         fg_color='grey'
-                                         )
-        button.pack(anchor="s")
+        Audio_input_Button = customtkinter.CTkButton(master=self,
+                                                     width=120,
+                                                     height=32,
+                                                     border_width=0,
+                                                     corner_radius=0,
+                                                     text="Audio input",
+                                                     command=lambda: self.change_page(
+                                                         Pages.AUDIO_INPUT),
+                                                     fg_color='grey'
+                                                     )
+        Audio_input_Button.pack(anchor="s")
         # add widgets onto the frame...
+        text_input_button = customtkinter.CTkButton(master=self,
+                                                    width=120,
+                                                    height=32,
+                                                    border_width=0,
+                                                    corner_radius=0,
+                                                    text="Text input",
+                                                    command=lambda: self.change_page(
+                                                        Pages.TEXT_INPUT),
+                                                    fg_color='grey'
+                                                    )
+        text_input_button.pack(anchor="s")
+
         button = customtkinter.CTkButton(master=self,
                                          width=120,
                                          height=32,
                                          border_width=0,
                                          corner_radius=0,
                                          text="Settings",
+                                         command=lambda: self.change_page(
+                                             Pages.SETTINGS),
                                          fg_color='grey'
                                          )
         button.pack(anchor="s")
+
+    def change_page(self, page):
+        global current_page
+        current_page = page
 
 
 class ConsoleFrame(customtkinter.CTkFrame):
@@ -89,6 +120,16 @@ class ConsoleFrame(customtkinter.CTkFrame):
         self.textbox.configure(state="disabled")
 
 
+class TextBoxFrame(customtkinter.CTkFrame):
+
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.default_message = "Hello, how are you doing?"
+        self.text_input = customtkinter.CTkTextbox(self, width=400, height=400)
+        self.text_input.grid(row=0, column=0, rowspan=2, columnspan=2)
+        self.text_input.insert(customtkinter.INSERT, self.default_message+'\n')
+
+
 class OptionsFrame(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
@@ -132,18 +173,25 @@ class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
         self.geometry("850x500")
-        self.title("CTk example")
+        self.title("Voice to Japanese")
         self.resizable(False, False)
 
         sidebar = SidebarFrame(master=self, width=100)
         sidebar.grid(row=0, column=0, padx=20, pady=20, sticky="nswe")
 
-        console = ConsoleFrame(master=self, width=500, corner_radius=8)
-        console.grid(row=0, column=1, padx=20, pady=20,
-                     sticky="nswe")
-
-        options = OptionsFrame(master=self)
-        options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
+        global current_page
+        if (current_page == Pages.AUDIO_INPUT):
+            console = ConsoleFrame(master=self, width=500, corner_radius=8)
+            console.grid(row=0, column=1, padx=20, pady=20,
+                         sticky="nswe")
+            options = OptionsFrame(master=self)
+            options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
+        elif (current_page == Pages.TEXT_INPUT):
+            textbox = TextBoxFrame(master=self, width=500, corner_radius=8)
+            textbox.grid(row=0, column=1, padx=20, pady=20,
+                         sticky="nswe")
+            options = OptionsFrame(master=self)
+            options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
 
 
 def optionmenu_callback(choice):
