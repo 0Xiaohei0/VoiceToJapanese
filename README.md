@@ -20,7 +20,9 @@ Wait a couple seconds for audio synthesis.
 
 Audio is played through default output device.
 
-
+## Links
+We have a discord server where you can try this tool with other people, troubleshoot your issues and suggest features:
+https://discord.gg/EEcDgN9wJJ
 # Inspiration
 
 This project was inspired by this video：
