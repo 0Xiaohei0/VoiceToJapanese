@@ -3,6 +3,9 @@ import customtkinter
 import STTS
 from threading import Event
 from enum import Enum
+import sounddevice as sd
+import numpy as np
+import time
 
 
 class Pages(Enum):
@@ -13,6 +16,7 @@ class Pages(Enum):
 
 current_page = Pages.AUDIO_INPUT
 pageChange_eventhandlers = []
+audio_level = 0.3
 
 
 class SidebarFrame(customtkinter.CTkFrame):
@@ -167,7 +171,7 @@ class OptionsFrame(customtkinter.CTkFrame):
                                              values=self.input_anguage,
                                              command=self.input_dropdown_callbakck,
                                              variable=combobox_var)
-        combobox.pack(padx=20, pady=10,)
+        combobox.pack(padx=20, pady=0,)
 
         label_Input = customtkinter.CTkLabel(
             master=self, text='Voice: ')
@@ -179,7 +183,21 @@ class OptionsFrame(customtkinter.CTkFrame):
                                              values=self.voicenames,
                                              command=self.voice_dropdown_callbakck,
                                              variable=combobox_var)
-        combobox.pack(padx=20, pady=10)
+        combobox.pack(padx=20, pady=0)
+
+        label_mic = customtkinter.CTkLabel(
+            master=self, text='Mic activity: ')
+        label_mic.pack(padx=20, pady=10)
+        self.progressbar = customtkinter.CTkProgressBar(master=self, width=100)
+        self.progressbar.pack(padx=20, pady=0)
+        thread = Thread(target=self.update_mic_meter)
+        thread.start()
+
+    def update_mic_meter(self):
+        global audio_level
+        self.progressbar.set(audio_level)
+        time.sleep(0.1)
+        self.update_mic_meter()
 
     def input_dropdown_callbakck(self, choice):
         STTS.change_input_language(choice)
@@ -271,6 +289,20 @@ class App(customtkinter.CTk):
 def optionmenu_callback(choice):
     print("optionmenu dropdown clicked:", choice)
 
+
+def print_sound(indata, outdata, frames, time, status):
+    global audio_level
+    audio_level = np.linalg.norm(indata)/10
+    # print("|" * int(volume_norm))
+
+
+def listen_to_mic():
+    with sd.Stream(callback=print_sound):
+        sd.sleep(10000000)
+
+
+thread = Thread(target=listen_to_mic)
+thread.start()
 
 app = App()
 app.configure(background='#fafafa')
