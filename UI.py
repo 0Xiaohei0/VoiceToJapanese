@@ -78,7 +78,7 @@ class ConsoleFrame(customtkinter.CTkFrame):
                              args=(self.stop_recording_event,))
         # add widgets onto the frame...
         self.textbox = customtkinter.CTkTextbox(self, width=400, height=400)
-        self.textbox.grid(row=0, column=0, rowspan=2, columnspan=2)
+        self.textbox.grid(row=0, column=0, rowspan=2, columnspan=3)
         # configure textbox to be read-only
         self.textbox.configure(state="disabled")
         STTS.logging_eventhandlers.append(self.log_message_on_console)
@@ -104,6 +104,22 @@ class ConsoleFrame(customtkinter.CTkFrame):
                                                           fg_color='grey'
                                                           )
         self.playOriginalButton.grid(row=3, column=1, pady=10)
+
+        self.clearConsoleButton = customtkinter.CTkButton(master=self,
+                                                          width=32,
+                                                          height=32,
+                                                          border_width=0,
+                                                          corner_radius=8,
+                                                          text="X",
+                                                          command=self.clear_console,
+                                                          fg_color='grey'
+                                                          )
+        self.clearConsoleButton.grid(row=3, column=2, padx=10, pady=10)
+
+    def clear_console(self):
+        self.textbox.configure(state="normal")
+        self.textbox.delete('1.0', customtkinter.END)
+        self.textbox.configure(state="disabled")
 
     def recordButton_callback(self):
         if (self.isRecording):
