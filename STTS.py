@@ -7,6 +7,7 @@ import json
 import azure.cognitiveservices.speech as speechsdk
 from enum import Enum
 import romajitable
+import dict
 
 SPEECH_KEY = os.environ.get('SPEECH_KEY_P')
 SPEECH_REGION = os.environ.get('SPEECH_REGION')
@@ -111,9 +112,7 @@ voicename_to_callparam_dict = {
     "CN-Xiaoyi": Voice(VoiceType.MICROSOFT_AZURE.value, "zh-CN-XiaoyiNeural", "Chinese"),
 }
 
-language_dict = {'English': "en-US",
-                 "Japanese": "ja-JP",
-                 "Chinese": "zh-CN"}
+language_dict = dict.language_dict
 
 
 def initialize_speech_recognizer():
