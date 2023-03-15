@@ -1,11 +1,6 @@
 import os
-import pyaudio
-from pydub import AudioSegment
 from pydub.playback import play
-import requests
-import json
 import azure.cognitiveservices.speech as speechsdk
-from enum import Enum
 import dict
 
 SPEECH_KEY = os.environ.get('SPEECH_KEY_P')
@@ -44,44 +39,41 @@ def initialize_speech_translator():
 
 
 def start_translator():
-    print("Speak into your microphone.")
-    translation_recognition_result = translation_recognizer.recognize_once_async().get()
-
-    if translation_recognition_result.reason == speechsdk.ResultReason.TranslatedSpeech:
-        send_update_text_event(
-            translation_recognition_result.translations[target_language])
-        print("Recognized: {}".format(translation_recognition_result.text))
-        print("""Translated into '{}': {}""".format(
-            target_language,
-            translation_recognition_result.translations[target_language]))
-    elif translation_recognition_result.reason == speechsdk.ResultReason.NoMatch:
-        print("No speech could be recognized: {}".format(
-            translation_recognition_result.no_match_details))
-    elif translation_recognition_result.reason == speechsdk.ResultReason.Canceled:
-        cancellation_details = translation_recognition_result.cancellation_details
-        print("Speech Recognition canceled: {}".format(
-            cancellation_details.reason))
-        if cancellation_details.reason == speechsdk.CancellationReason.Error:
-            print("Error details: {}".format(
-                cancellation_details.error_details))
-            print("Did you set the speech resource key and region values?")
-
     # print("Speak into your microphone.")
-    # translation_recognizer.start_continuous_recognition_async()
-    # translation_recognizer.recognizing.connect(
-    #     lambda evt: print(evt))
-    # translation_recognizer.recognized.connect(
-    #     lambda evt: set_translation_text(evt.result.text))
-    # translation_recognizer.canceled.connect(showReconitionErrors)
+    # translation_recognition_result = translation_recognizer.recognize_once_async().get()
 
-    # translation_recognizer.session_stopped.connect(showReconitionErrors)
-    # translation_recognizer.canceled.connect(showReconitionErrors)
+    # if translation_recognition_result.reason == speechsdk.ResultReason.TranslatedSpeech:
+    #     send_update_text_event(
+    #         translation_recognition_result.translations[target_language])
+    #     print("Recognized: {}".format(translation_recognition_result.text))
+    #     print("""Translated into '{}': {}""".format(
+    #         target_language,
+    #         translation_recognition_result.translations[target_language]))
+    # elif translation_recognition_result.reason == speechsdk.ResultReason.NoMatch:
+    #     print("No speech could be recognized: {}".format(
+    #         translation_recognition_result.no_match_details))
+    # elif translation_recognition_result.reason == speechsdk.ResultReason.Canceled:
+    #     cancellation_details = translation_recognition_result.cancellation_details
+    #     print("Speech Recognition canceled: {}".format(
+    #         cancellation_details.reason))
+    #     if cancellation_details.reason == speechsdk.CancellationReason.Error:
+    #         print("Error details: {}".format(
+    #             cancellation_details.error_details))
+    #         print("Did you set the speech resource key and region values?")
 
-    # translation_recognizer.stop_continuous_recognition_async()
+    print("Speak into your microphone.")
+    translation_recognizer.start_continuous_recognition_async()
+    translation_recognizer.recognizing.connect(
+        lambda evt: set_translation_text(send_update_text_event(evt.result.translations[target_language])))
+    translation_recognizer.recognized.connect(
+        lambda evt: set_translation_text(send_update_text_event(evt.result.translations[target_language])))
+    translation_recognizer.canceled.connect(showReconitionErrors)
+
+    translation_recognizer.session_stopped.connect(showReconitionErrors)
+    translation_recognizer.canceled.connect(showReconitionErrors)
 
 
 def showReconitionErrors(translation_recognition_result):
-    print(translation_recognition_result)
     translation_recognition_result = translation_recognition_result.result
     if translation_recognition_result.reason == speechsdk.ResultReason.RecognizedSpeech:
         log_message("Recognized: {}".format(

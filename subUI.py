@@ -18,8 +18,8 @@ class App(customtkinter.CTkToplevel):
         self.wm_attributes('-transparentcolor', 'black')
         self.configure(fg_color='black')
         self.label = customtkinter.CTkLabel(
-            master=self, text='default text', fg_color='black', text_color="white", font=("Arial", 45), wraplength=1920)
-        self.label.place(relx=0.5, rely=0.8, anchor=customtkinter.CENTER)
+            master=self, text='default text', fg_color='black', text_color="white", font=("Arial", 45), wraplength=1500, anchor='w')
+        self.label.place(relx=0.2, rely=0.8, anchor='w')
 
 
 class Config(customtkinter.CTkToplevel):
@@ -31,7 +31,7 @@ class Config(customtkinter.CTkToplevel):
         self.label = customtkinter.CTkLabel(
             master=self, text='Subtitle position')
         self.label.pack(padx=10, pady=10)
-        self.sub_pos_x = 0.5
+        self.sub_pos_x = 0.2
         self.sub_pos_y = 0.8
 
         xslider = customtkinter.CTkSlider(
@@ -108,7 +108,7 @@ def update_text(text):
 
 
 def move_text(x, y):
-    app.label.place(relx=x, rely=y, anchor=customtkinter.CENTER)
+    app.label.place(relx=x, rely=y, anchor='w')
 
 
 SUB.text_change_eventhandlers.append(update_text)
@@ -119,7 +119,7 @@ def start_recording_loop():
         SUB.start_translator()
 
 
-thread = Thread(target=start_recording_loop)
+thread = Thread(target=SUB.start_translator)
 thread.start()
 
 
