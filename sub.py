@@ -6,7 +6,7 @@ import requests
 import json
 import azure.cognitiveservices.speech as speechsdk
 from enum import Enum
-import romajitable
+import dict
 
 SPEECH_KEY = os.environ.get('SPEECH_KEY_P')
 SPEECH_REGION = os.environ.get('SPEECH_REGION')
@@ -18,6 +18,11 @@ translation_recognizer = None
 target_language = ''
 speech_translation_config = None
 audio_config = None
+input_language_name = "Japanese"
+output_language_name = "English"
+
+language_dict = dict.language_dict
+azure_language_dict = dict.azure_language_dict
 
 
 def initialize_speech_translator():
@@ -25,11 +30,12 @@ def initialize_speech_translator():
     global target_language
     global audio_config
     global translation_recognizer
+    global input_language_name
     speech_translation_config = speechsdk.translation.SpeechTranslationConfig(
         subscription=os.environ.get('SPEECH_KEY_P'), region=os.environ.get('SPEECH_REGION'))
-    speech_translation_config.speech_recognition_language = "ja-JP"
+    speech_translation_config.speech_recognition_language = language_dict[input_language_name]
 
-    target_language = "en"
+    target_language = azure_language_dict[output_language_name]
     speech_translation_config.add_target_language(target_language)
 
     audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
@@ -105,6 +111,18 @@ def send_update_text_event(text):
     global text_change_eventhandlers
     for eventhandler in text_change_eventhandlers:
         eventhandler(text)
+
+
+def change_input_language(input_lang_name):
+    global input_language_name
+    input_language_name = input_lang_name
+    initialize_speech_translator()
+
+
+def change_output_language(output_lang_name):
+    global output_language_name
+    output_language_name = output_lang_name
+    initialize_speech_translator()
 
 
 initialize_speech_translator()
