@@ -1,6 +1,6 @@
 import time
 import customtkinter
-import SUB
+import subLocal as SUB
 from threading import Thread
 import sounddevice as sd
 import numpy as np
@@ -15,6 +15,7 @@ class App(customtkinter.CTkToplevel):
         self.title("app")
         self.resizable(False, False)
         self.overrideredirect(1)
+        self.attributes("-topmost", True)
         self.wm_attributes('-transparentcolor', 'black')
         self.configure(fg_color='black')
         self.label = customtkinter.CTkLabel(
@@ -45,27 +46,27 @@ class Config(customtkinter.CTkToplevel):
         self.default_output_anguage = "English"
         self.input_anguage = ["English", "Japanese", "Chinese"]
 
-        # label_Input = customtkinter.CTkLabel(
-        #     master=self, text='Input Language: ')
-        # label_Input.pack(padx=20, pady=10)
-        # inputbox_var = customtkinter.StringVar(
-        #     value=self.default_input_anguage)
-        # combobox = customtkinter.CTkComboBox(master=self,
-        #                                      values=self.input_anguage,
-        #                                      command=self.input_dropdown_callbakck,
-        #                                      variable=inputbox_var)
-        # combobox.pack(padx=20, pady=0)
+        label_Input = customtkinter.CTkLabel(
+            master=self, text='Input Language: ')
+        label_Input.pack(padx=20, pady=10)
+        inputbox_var = customtkinter.StringVar(
+            value=self.default_input_anguage)
+        combobox = customtkinter.CTkComboBox(master=self,
+                                             values=self.input_anguage,
+                                             command=self.input_dropdown_callbakck,
+                                             variable=inputbox_var)
+        combobox.pack(padx=20, pady=0)
 
-        # label_Input = customtkinter.CTkLabel(
-        #     master=self, text='Output Language: ')
-        # label_Input.pack(padx=20, pady=10)
-        # outputbox_var = customtkinter.StringVar(
-        #     value=self.default_output_anguage)
-        # combobox = customtkinter.CTkComboBox(master=self,
-        #                                      values=self.input_anguage,
-        #                                      command=self.output_dropdown_callbakck,
-        #                                      variable=outputbox_var)
-        # combobox.pack(padx=20, pady=10)
+        label_Input = customtkinter.CTkLabel(
+            master=self, text='Output Language: ')
+        label_Input.pack(padx=20, pady=10)
+        outputbox_var = customtkinter.StringVar(
+            value=self.default_output_anguage)
+        combobox = customtkinter.CTkComboBox(master=self,
+                                             values=self.input_anguage,
+                                             command=self.output_dropdown_callbakck,
+                                             variable=outputbox_var)
+        combobox.pack(padx=20, pady=10)
 
         label_mic = customtkinter.CTkLabel(
             master=self, text='Mic activity: ')
