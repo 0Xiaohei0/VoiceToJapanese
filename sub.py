@@ -4,7 +4,7 @@ import azure.cognitiveservices.speech as speechsdk
 import dict
 
 SPEECH_KEY = os.environ.get('SPEECH_KEY_P')
-SPEECH_REGION = os.environ.get('SPEECH_REGION')
+SPEECH_REGION = 'eastus'
 
 text_change_eventhandlers = []
 
@@ -27,7 +27,7 @@ def initialize_speech_translator():
     global translation_recognizer
     global input_language_name
     speech_translation_config = speechsdk.translation.SpeechTranslationConfig(
-        subscription=os.environ.get('SPEECH_KEY_P'), region=os.environ.get('SPEECH_REGION'))
+        subscription=SPEECH_KEY, region=SPEECH_REGION)
     speech_translation_config.speech_recognition_language = language_dict[input_language_name]
 
     target_language = azure_language_dict[output_language_name]
