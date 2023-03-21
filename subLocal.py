@@ -1,10 +1,7 @@
 import dict
 import whisper
-import pyaudio
-from pydub import AudioSegment
 import speech_recognition as sr
-from translate import translate
-from threading import Thread
+from translator import translate
 
 model = whisper.load_model("base")
 text_change_eventhandlers = []

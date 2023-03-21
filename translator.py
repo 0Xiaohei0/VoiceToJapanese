@@ -13,6 +13,7 @@ def translate(text, from_code, to_code):
     )
     argostranslate.package.install_from_path(package_to_install.download())
 
+    # print(f'{from_code}, {to_code}')
     # Translate
     translatedText = argostranslate.translate.translate(
         text, from_code, to_code)

@@ -1,6 +1,6 @@
 from threading import Thread
 import customtkinter
-import STTS
+import STTSLocal as STTS
 from threading import Event
 from enum import Enum
 import sounddevice as sd
@@ -211,9 +211,9 @@ class OptionsFrame(customtkinter.CTkFrame):
 
     def update_mic_meter(self):
         global audio_level
-        self.progressbar.set(audio_level)
-        time.sleep(0.1)
-        self.update_mic_meter()
+        while True:
+            self.progressbar.set(audio_level)
+            time.sleep(0.1)
 
     def input_dropdown_callbakck(self, choice):
         STTS.change_input_language(choice)
