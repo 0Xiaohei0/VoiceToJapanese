@@ -17,6 +17,7 @@ def translate(text, from_code, to_code):
     data = f'text={text}&target_lang={to_code.upper()}'
     translationResponse = requests.post(
         'https://api-free.deepl.com/v2/translate', headers=headers, data=data.encode('utf-8'))
+    # print(translationResponse.content)
     responseJSON = json.loads(
         translationResponse.content.decode('utf-8'))
     if "translations" in responseJSON:
