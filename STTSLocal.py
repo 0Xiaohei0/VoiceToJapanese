@@ -9,14 +9,52 @@ import dict
 import translator
 from voicevox import vboxclient
 
-# start voicevox server
-vboxapp = vboxclient.voiceclient()  # Class「voiceclient」を利用可能にする
-# vboxapp.vbox_dl()  # インストーラーをダウンロード&実行
-vboxapp.app(exepass="VOICEVOX\\run.exe")
 
 VOICE_VOX_URL = "20.85.153.114"
 VOICE_VOX_URL_LOCAL = "127.0.0.1"
 use_local_voice_vox = False
+speakersResponse = None
+vboxapp = None
+speaker_id = 1
+
+
+def start_voicevox_server():
+    global vboxapp
+    if (vboxapp != None):
+        return
+    # start voicevox server
+    vboxapp = vboxclient.voiceclient()  # Class「voiceclient」を利用可能にする
+    # vboxapp.vbox_dl()  # インストーラーをダウンロード&実行
+    vboxapp.app(exepass="VOICEVOX\\run.exe")
+
+
+def initialize_speakers():
+    global speakersResponse
+    global vboxapp
+    if (vboxapp == None):
+        start_voicevox_server()
+    url = f"http://{VOICE_VOX_URL_LOCAL}:50021/speakers"
+    speakersResponse = requests.request("GET", url).json()
+
+
+def get_speaker_names():
+    global speakersResponse
+    if (speakersResponse == None):
+        initialize_speakers()
+    speakerNames = list(
+        map(lambda speaker: speaker['name'],  speakersResponse))
+    return speakerNames
+
+
+def get_speaker_styles(speaker_name):
+    global speakersResponse
+    if (speakersResponse == None):
+        initialize_speakers()
+    speaker_styles = next(
+        speaker['styles'] for speaker in speakersResponse if speaker['name'] == speaker_name)
+
+    print(speaker_styles)
+    return speaker_styles
 
 
 recording = False
@@ -30,86 +68,6 @@ input_language_name = 'English'
 last_input_text = ''
 last_voice_param = None
 last_input_language = ''
-
-speech_recognizer = None
-
-
-class VoiceVoxSpeaker(Enum):
-    四国めたん_1 = 2
-    四国めたん_2 = 0
-    四国めたん_3 = 6
-    四国めたん_4 = 4
-    四国めたん_5 = 36
-    四国めたん_6 = 37
-
-    春日部つむぎ = 8
-    雨晴はう = 10
-    冥鳴ひまり = 14
-
-    九州そら_1 = 16
-    九州そら_2 = 15
-    九州そら_3 = 17
-    九州そら_4 = 19
-
-    もち子さん = 20
-    剣崎雌雄 = 21  # male
-
-    ナースロボタイプ_1 = 47
-    ナースロボタイプ_2 = 48
-    ナースロボタイプ_3 = 49
-    ナースロボタイプ_4 = 50
-
-    小夜SAYO = 46
-    櫻歌ミコ_1 = 43
-    櫻歌ミコ_2 = 44
-    櫻歌ミコ_3 = 45
-
-    No7_1 = 29
-    No7_2 = 30
-    No7_3 = 31
-
-
-class VoiceType(Enum):
-    MICROSOFT_AZURE = 0
-    VOICE_VOX = 1
-
-
-class Voice():
-    def __init__(self, voice_type, voice_id, voice_language):
-        self.voice_type = voice_type
-        self.voice_id = voice_id
-        self.voice_language = voice_language
-
-
-voicename_to_callparam_dict = {
-    "四国めたん": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.四国めたん_1.value, "Japanese"),
-    "四国めたん_2": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.四国めたん_2.value, "Japanese"),
-    "四国めたん_3": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.四国めたん_3.value, "Japanese"),
-    "四国めたん_4": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.四国めたん_4.value, "Japanese"),
-    "四国めたん_5": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.四国めたん_5.value, "Japanese"),
-    "四国めたん_6": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.四国めたん_6.value, "Japanese"),
-    "春日部つむぎ": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.春日部つむぎ.value, "Japanese"),
-    "雨晴はう": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.雨晴はう.value, "Japanese"),
-    "冥鳴ひまり": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.冥鳴ひまり.value, "Japanese"),
-    "九州そら_1": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.九州そら_1.value, "Japanese"),
-    "九州そら_2": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.九州そら_2.value, "Japanese"),
-    "九州そら_3": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.九州そら_3.value, "Japanese"),
-    "九州そら_4": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.九州そら_4.value, "Japanese"),
-    "もち子さん": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.もち子さん.value, "Japanese"),
-    "ナースロボタイプ_1": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.ナースロボタイプ_1.value, "Japanese"),
-    "ナースロボタイプ_2": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.ナースロボタイプ_2.value, "Japanese"),
-    "ナースロボタイプ_3": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.ナースロボタイプ_3.value, "Japanese"),
-    "ナースロボタイプ_4": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.ナースロボタイプ_4.value, "Japanese"),
-    "小夜SAYO": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.小夜SAYO.value, "Japanese"),
-    "櫻歌ミコ_1": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.櫻歌ミコ_1.value, "Japanese"),
-    "櫻歌ミコ_2": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.櫻歌ミコ_2.value, "Japanese"),
-    "櫻歌ミコ_3": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.櫻歌ミコ_3.value, "Japanese"),
-    "No7_1": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.No7_1.value, "Japanese"),
-    "No7_2": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.No7_2.value, "Japanese"),
-    "No7_3": Voice(VoiceType.VOICE_VOX.value, VoiceVoxSpeaker.No7_3.value, "Japanese"),
-    "JP-Aoi": Voice(VoiceType.MICROSOFT_AZURE.value, "ja-JP-AoiNeural", "Japanese"),
-    "CN-Xiaoyi": Voice(VoiceType.MICROSOFT_AZURE.value, "zh-CN-XiaoyiNeural", "Chinese"),
-}
 
 language_dict = dict.language_dict
 
@@ -160,20 +118,6 @@ def PlayAudio(audioBytes):
     voiceLine = AudioSegment.from_wav("audioResponse.wav")
     play(voiceLine)
 
-    # Examples of azure_tts_voice_name:
-    # Female
-    # ja-JP-AoiNeural ja-JP-NanamiNeural ja-JP-MayuNeural ja-JP-ShioriNeural
-    # zh-CN-XiaoyiNeural zh-CN-XiaoshuangNeural
-    # India en-IN-NeerjaNeural
-    # Child en-GB-MaisieNeural
-    # US en-US-AmberNeural
-    #
-    # Male
-    # ja-JP-KeitaNeural
-
-    # example of language codes
-    # "zh": "chinese", "ja": "japanese", "en": "english", "ko": "korean"
-
 
 def start_STTS_loop():
     global auto_recording
@@ -215,9 +159,9 @@ def start_STTS_pipeline():
 
 def start_TTS_pipeline(input_text):
     global voice_name
+    global speaker_id
     inputLanguage = language_dict[input_language_name][:2]
-    voiceparam = voicename_to_callparam_dict[voice_name]
-    outputLanguage = language_dict[voiceparam.voice_language][:2]
+    outputLanguage = 'ja'
     # print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
     translate = inputLanguage != outputLanguage
     if (translate):
@@ -228,14 +172,14 @@ def start_TTS_pipeline(input_text):
         input_processed_text = input_text
 
     play_audio_from_local_syntheizer(
-        input_processed_text, voiceparam.voice_id)
+        input_processed_text, speaker_id)
 
     global last_input_text
     last_input_text = input_text
     global last_input_language
     last_input_language = inputLanguage
     global last_voice_param
-    last_voice_param = voiceparam
+    last_voice_param = speaker_id
 
 
 def playOriginal():
@@ -252,7 +196,7 @@ def playOriginal():
         last_input_text_processed = last_input_text
     text_ja = romajitable.to_kana(last_input_text_processed).katakana
     text_ja = text_ja.replace('・', '')
-    play_audio_from_local_syntheizer(text_ja, last_voice_param.voice_id)
+    play_audio_from_local_syntheizer(text_ja, last_voice_param)
     log_message(f'playing input: {text_ja}')
 
 

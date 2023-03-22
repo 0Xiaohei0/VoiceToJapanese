@@ -172,8 +172,13 @@ class TextBoxFrame(customtkinter.CTkFrame):
 class OptionsFrame(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.default_voice = "四国めたん"
-        self.voicenames = list(STTS.voicename_to_callparam_dict.keys())
+        self.speaker_names = STTS.get_speaker_names()
+        self.default_speaker = self.speaker_names[0]
+        self.current_speaker = self.default_speaker
+
+        self.current_styles = STTS.get_speaker_styles(self.current_speaker)
+        self.selected_style = self.current_styles[0]
+        STTS.speaker_id = self.selected_style['id']
 
         self.default_input_anguage = "English"
         self.input_anguage = ["English", "Japanese", "Chinese"]
@@ -181,25 +186,38 @@ class OptionsFrame(customtkinter.CTkFrame):
         label_Input = customtkinter.CTkLabel(
             master=self, text='Input Language: ')
         label_Input.pack(padx=20, pady=10)
-        combobox_var = customtkinter.StringVar(
+        input_language_combobox_var = customtkinter.StringVar(
             value=self.default_input_anguage)
-        combobox = customtkinter.CTkComboBox(master=self,
-                                             values=self.input_anguage,
-                                             command=self.input_dropdown_callbakck,
-                                             variable=combobox_var)
-        combobox.pack(padx=20, pady=0,)
+        input_language_combobox = customtkinter.CTkComboBox(master=self,
+                                                            values=self.input_anguage,
+                                                            command=self.input_dropdown_callbakck,
+                                                            variable=input_language_combobox_var)
+        input_language_combobox.pack(padx=20, pady=0,)
 
         label_Input = customtkinter.CTkLabel(
-            master=self, text='Voice: ')
+            master=self, text='Speaker: ')
         label_Input.pack(padx=20, pady=10)
-        combobox_var = customtkinter.StringVar(
-            value=self.default_voice)
-        STTS.voice_name = self.default_voice
-        combobox = customtkinter.CTkComboBox(master=self,
-                                             values=self.voicenames,
-                                             command=self.voice_dropdown_callbakck,
-                                             variable=combobox_var)
-        combobox.pack(padx=20, pady=0)
+        speaker_combobox_var = customtkinter.StringVar(
+            value=self.default_speaker)
+        STTS.voice_name = self.default_speaker
+        speaker_combobox = customtkinter.CTkComboBox(master=self,
+                                                     values=self.speaker_names,
+                                                     command=self.voice_dropdown_callbakck,
+                                                     variable=speaker_combobox_var)
+        speaker_combobox.pack(padx=20, pady=0)
+
+        label_Input = customtkinter.CTkLabel(
+            master=self, text='Style: ')
+        label_Input.pack(padx=20, pady=10)
+        self.style_combobox_var = customtkinter.StringVar(
+            value=self.selected_style['name'])
+        STTS.speaker_id = self.selected_style['id']
+        self.style_combobox = customtkinter.CTkComboBox(master=self,
+                                                        values=list(
+                                                            map(lambda style: style['name'], self.current_styles)),
+                                                        command=self.style_dropdown_callbakck,
+                                                        variable=self.style_combobox_var)
+        self.style_combobox.pack(padx=20, pady=0)
 
         label_mic = customtkinter.CTkLabel(
             master=self, text='Mic activity: ')
@@ -219,7 +237,19 @@ class OptionsFrame(customtkinter.CTkFrame):
         STTS.change_input_language(choice)
 
     def voice_dropdown_callbakck(self, choice):
-        STTS.voice_name = choice
+        self.current_speaker = choice
+        self.current_styles = STTS.get_speaker_styles(self.current_speaker)
+        self.style_combobox.configure(values=list(
+            map(lambda style: style['name'], self.current_styles)))
+        self.selected_style = self.current_styles[0]
+        self.style_combobox_var = customtkinter.StringVar(
+            value=self.selected_style['name'])
+        self.style_combobox.configure(variable=self.style_combobox_var)
+
+    def style_dropdown_callbakck(self, choice):
+        STTS.speaker_id = next(
+            style['id'] for style in self.current_styles if choice == style['name'])
+        print(STTS.speaker_id)
 
 
 class Page(customtkinter.CTkFrame):
@@ -258,7 +288,7 @@ class SettingsPage(Page):
 
         use_voicevox_local_checkbox = customtkinter.CTkCheckBox(master=self, text="Is running voicevox locally", command=self.set_use_voicevox_local,
                                                                 variable=self.check_var, onvalue=True, offvalue=False)
-        #use_voicevox_local_checkbox.pack(padx=20, pady=10)
+        # use_voicevox_local_checkbox.pack(padx=20, pady=10)
 
     def set_use_voicevox_local(self):
         STTS.use_local_voice_vox = self.check_var.get()
@@ -319,6 +349,8 @@ def listen_to_mic():
 
 thread = Thread(target=listen_to_mic)
 thread.start()
+
+STTS.start_voicevox_server()
 
 app = App()
 app.configure(background='#fafafa')
