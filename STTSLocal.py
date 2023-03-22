@@ -7,6 +7,12 @@ from enum import Enum
 import romajitable
 import dict
 import translator
+from voicevox import vboxclient
+
+# start voicevox server
+vboxapp = vboxclient.voiceclient()  # Class「voiceclient」を利用可能にする
+# vboxapp.vbox_dl()  # インストーラーをダウンロード&実行
+vboxapp.app(exepass="VOICEVOX\\run.exe")
 
 VOICE_VOX_URL = "20.85.153.114"
 VOICE_VOX_URL_LOCAL = "127.0.0.1"
@@ -141,6 +147,13 @@ def sendTextToSyntheizer(text, speaker_id):
     return AudioResponse
 
 
+def play_audio_from_local_syntheizer(text, speaker_id):
+    vboxapp.run(text=text, speaker=speaker_id,
+                filename="audioResponse.wav")  # textとfilenameは好きに変更できます
+    voiceLine = AudioSegment.from_wav("audioResponse.wav")
+    play(voiceLine)
+
+
 def PlayAudio(audioBytes):
     with open("audioResponse.wav", "wb") as file:
         file.write(audioBytes)
@@ -214,9 +227,8 @@ def start_TTS_pipeline(input_text):
     else:
         input_processed_text = input_text
 
-    AudioResponse = sendTextToSyntheizer(
+    play_audio_from_local_syntheizer(
         input_processed_text, voiceparam.voice_id)
-    PlayAudio(AudioResponse.content)
 
     global last_input_text
     last_input_text = input_text
@@ -240,8 +252,7 @@ def playOriginal():
         last_input_text_processed = last_input_text
     text_ja = romajitable.to_kana(last_input_text_processed).katakana
     text_ja = text_ja.replace('・', '')
-    PlayAudio(sendTextToSyntheizer(
-        text_ja, last_voice_param.voice_id).content)
+    play_audio_from_local_syntheizer(text_ja, last_voice_param.voice_id)
     log_message(f'playing input: {text_ja}')
 
 

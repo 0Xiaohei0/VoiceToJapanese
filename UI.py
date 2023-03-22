@@ -258,7 +258,7 @@ class SettingsPage(Page):
 
         use_voicevox_local_checkbox = customtkinter.CTkCheckBox(master=self, text="Is running voicevox locally", command=self.set_use_voicevox_local,
                                                                 variable=self.check_var, onvalue=True, offvalue=False)
-        use_voicevox_local_checkbox.pack(padx=20, pady=10)
+        #use_voicevox_local_checkbox.pack(padx=20, pady=10)
 
     def set_use_voicevox_local(self):
         STTS.use_local_voice_vox = self.check_var.get()
