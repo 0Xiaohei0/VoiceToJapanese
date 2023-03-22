@@ -197,6 +197,10 @@ def start_STTS_pipeline():
     if (input_text == ''):
         return
     log_message(f'Input: {input_text}')
+    start_TTS_pipeline(input_text)
+
+
+def start_TTS_pipeline(input_text):
     global voice_name
     inputLanguage = language_dict[input_language_name][:2]
     voiceparam = voicename_to_callparam_dict[voice_name]
