@@ -208,6 +208,8 @@ def start_STTS_pipeline():
     if (input_text == ''):
         return
     log_message(f'Input: {input_text}')
+    with open("Input.txt", "w", encoding="utf-8") as file:
+        file.write(input_text)
     start_TTS_pipeline(input_text)
 
 
@@ -225,6 +227,8 @@ def start_TTS_pipeline(input_text):
     else:
         input_processed_text = input_text
 
+    with open("translation.txt", "w", encoding="utf-8") as file:
+        file.write(input_processed_text)
     play_audio_from_local_syntheizer(
         input_processed_text, speaker_id)
 
