@@ -1,5 +1,6 @@
 from threading import Thread
 import customtkinter
+import keyboard
 import STTSLocal as STTS
 from threading import Event
 from enum import Enum
@@ -249,7 +250,7 @@ class OptionsFrame(customtkinter.CTkFrame):
     def style_dropdown_callbakck(self, choice):
         STTS.speaker_id = next(
             style['id'] for style in self.current_styles if choice == style['name'])
-        print(STTS.speaker_id)
+        print(f'Changed speaker ID to: {STTS.speaker_id}')
 
 
 class Page(customtkinter.CTkFrame):
@@ -290,8 +291,45 @@ class SettingsPage(Page):
                                                                 variable=self.check_var, onvalue=True, offvalue=False)
         # use_voicevox_local_checkbox.pack(padx=20, pady=10)
 
+        mic_mode_label = customtkinter.CTkLabel(
+            master=self, text='Microphone mode: ')
+        mic_mode_label.pack(padx=20, pady=10)
+        self.mic_mode_combobox_var = customtkinter.StringVar(
+            value='open mic')
+        self.mic_mode_combobox = customtkinter.CTkComboBox(master=self,
+                                                           values=[
+                                                               'open mic', 'push to talk'],
+                                                           command=self.mic_mode_dropdown_callbakck,
+                                                           variable=self.mic_mode_combobox_var)
+        self.mic_mode_combobox.pack(padx=20, pady=0)
+        self.mic_key_label = customtkinter.CTkLabel(
+            master=self, text=f'push to talk key: {STTS.PUSH_TO_RECORD_KEY}')
+        self.mic_key_label.pack(padx=20, pady=10)
+        self.change_mic_key_Button = customtkinter.CTkButton(master=self,
+                                                             text="change key",
+                                                             command=self.change_push_to_talk_key,
+                                                             fg_color='grey'
+                                                             )
+        self.change_mic_key_Button.pack(anchor="s")
+
+    def mic_mode_dropdown_callbakck(self, choice):
+        STTS.mic_mode = choice
+
     def set_use_voicevox_local(self):
         STTS.use_local_voice_vox = self.check_var.get()
+
+    def change_push_to_talk_key(self):
+        thread = Thread(target=self.listen_for_key)
+        thread.start()
+
+    def listen_for_key(self):
+        self.mic_key_label.configure(text='listening to keypress...')
+        self.change_mic_key_Button.configure(fg_color='#fc7b5b')
+        key = keyboard.read_key()
+        STTS.PUSH_TO_RECORD_KEY = key
+        self.mic_key_label.configure(
+            text=f'push to talk key: {STTS.PUSH_TO_RECORD_KEY}')
+        self.change_mic_key_Button.configure(fg_color='grey')
 
 
 class App(customtkinter.CTk):

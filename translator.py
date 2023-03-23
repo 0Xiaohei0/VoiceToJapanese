@@ -4,11 +4,9 @@ import json
 import os
 import requests
 
-DEEPL_TOKEN = os.environ.get("translation-service-api-token")
-
 
 def translate(text, from_code, to_code):
-
+    DEEPL_TOKEN = os.environ.get("translation-service-api-token")
     # Send text to translation service
     headers = {
         'Authorization': f'DeepL-Auth-Key {DEEPL_TOKEN}',

@@ -1,4 +1,6 @@
 from threading import Thread
+import keyboard
+import pyaudio
 import speech_recognition as sr
 from pydub import AudioSegment
 from pydub.playback import play
@@ -16,6 +18,9 @@ use_local_voice_vox = False
 speakersResponse = None
 vboxapp = None
 speaker_id = 1
+mic_mode = 'open mic'
+PUSH_TO_TALK_OUTPUT_FILENAME = "Output/PUSH_TO_TALK_OUTPUT_FILE.wav"
+PUSH_TO_RECORD_KEY = '5'
 
 
 def start_voicevox_server():
@@ -119,6 +124,48 @@ def PlayAudio(audioBytes):
     play(voiceLine)
 
 
+def push_to_talk():
+    while True:
+        a = keyboard.read_key()
+        if (a == PUSH_TO_RECORD_KEY):
+            log_message(f"push to talk started...")
+            audio = pyaudio.PyAudio()
+            CHUNK = 1024
+            FORMAT = pyaudio.paInt16
+            CHANNELS = 1
+            RATE = 44100
+            # Open audio stream
+            stream = audio.open(format=FORMAT, channels=CHANNELS,
+                                rate=RATE, input=True,
+                                frames_per_buffer=CHUNK)
+
+            # Initialize frames array to store audio data
+            frames = []
+
+            # Record audio data
+            while True:
+                data = stream.read(CHUNK)
+                frames.append(data)
+                if not keyboard.is_pressed(PUSH_TO_RECORD_KEY):
+                    break
+
+            # Stop recording and close audio stream
+            log_message("push to talk ended")
+            stream.stop_stream()
+            stream.close()
+
+            # Save recorded audio data to file
+            audio_segment = AudioSegment(
+                data=b''.join(frames),
+                sample_width=audio.get_sample_size(FORMAT),
+                frame_rate=RATE,
+                channels=CHANNELS
+            )
+
+            audio_segment.export(PUSH_TO_TALK_OUTPUT_FILENAME, format="wav")
+            break
+
+
 def start_STTS_loop():
     global auto_recording
     while auto_recording:
@@ -126,24 +173,31 @@ def start_STTS_loop():
 
 
 def start_STTS_pipeline():
-    # record audio
+    global mic_mode
     audio = None
-    # obtain audio from the microphone
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        # log_message("Adjusting for ambient noise...")
-        # r.adjust_for_ambient_noise(source)
-        log_message("Say something!")
-        audio = r.listen(source)
+    if (mic_mode == 'open mic'):
+        # record audio
+        # obtain audio from the microphone
+        r = sr.Recognizer()
+        with sr.Microphone() as source:
+            # log_message("Adjusting for ambient noise...")
+            # r.adjust_for_ambient_noise(source)
+            log_message("Say something!")
+            audio = r.listen(source)
 
-    global auto_recording
-    if not auto_recording:
-        return
+        global auto_recording
+        if not auto_recording:
+            return
 
-    # send audio to whisper
-    global input_language_name
-    input_text = ''
-    log_message("recording compelete, sending to whisper")
+        # send audio to whisper
+        global input_language_name
+        input_text = ''
+        log_message("recording compelete, sending to whisper")
+    elif (mic_mode == 'push to talk'):
+        push_to_talk()
+        r = sr.Recognizer()
+        with sr.AudioFile(PUSH_TO_TALK_OUTPUT_FILENAME) as source:
+            audio = r.record(source)
     try:
         input_text = r.recognize_whisper(
             audio, language=input_language_name.lower())
@@ -154,6 +208,8 @@ def start_STTS_pipeline():
     if (input_text == ''):
         return
     log_message(f'Input: {input_text}')
+    with open("Input.txt", "w", encoding="utf-8") as file:
+        file.write(input_text)
     start_TTS_pipeline(input_text)
 
 
@@ -171,6 +227,8 @@ def start_TTS_pipeline(input_text):
     else:
         input_processed_text = input_text
 
+    with open("translation.txt", "w", encoding="utf-8") as file:
+        file.write(input_processed_text)
     play_audio_from_local_syntheizer(
         input_processed_text, speaker_id)
 
