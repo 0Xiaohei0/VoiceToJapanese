@@ -249,7 +249,7 @@ class OptionsFrame(customtkinter.CTkFrame):
     def style_dropdown_callbakck(self, choice):
         STTS.speaker_id = next(
             style['id'] for style in self.current_styles if choice == style['name'])
-        print(STTS.speaker_id)
+        print(f'Changed speaker ID to: {STTS.speaker_id}')
 
 
 class Page(customtkinter.CTkFrame):
@@ -289,6 +289,21 @@ class SettingsPage(Page):
         use_voicevox_local_checkbox = customtkinter.CTkCheckBox(master=self, text="Is running voicevox locally", command=self.set_use_voicevox_local,
                                                                 variable=self.check_var, onvalue=True, offvalue=False)
         # use_voicevox_local_checkbox.pack(padx=20, pady=10)
+
+        mic_mode_label = customtkinter.CTkLabel(
+            master=self, text='Microphone mode: ')
+        mic_mode_label.pack(padx=20, pady=10)
+        self.mic_mode_combobox_var = customtkinter.StringVar(
+            value='open mic')
+        self.mic_mode_combobox = customtkinter.CTkComboBox(master=self,
+                                                           values=[
+                                                               'open mic', 'push to talk'],
+                                                           command=self.mic_mode_dropdown_callbakck,
+                                                           variable=self.mic_mode_combobox_var)
+        self.mic_mode_combobox.pack(padx=20, pady=0)
+
+    def mic_mode_dropdown_callbakck(self, choice):
+        STTS.mic_mode = choice
 
     def set_use_voicevox_local(self):
         STTS.use_local_voice_vox = self.check_var.get()
