@@ -20,6 +20,8 @@ Wait a couple seconds for audio synthesis.
 
 Audio is played through default output device.
 
+To play the audio in other programs (discord, apex etc.) Here's a tutorial video:
+https://youtu.be/cPGyEeeMxCE
 ## Links
 We have a discord server where you can try this tool with other people, troubleshoot your issues and suggest features:
 https://discord.gg/EEcDgN9wJJ
