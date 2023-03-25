@@ -6,3 +6,4 @@ Output/*
 __*
 test.py
 VOICEVOX/*
+*.wav
