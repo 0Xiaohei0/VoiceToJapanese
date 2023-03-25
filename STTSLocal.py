@@ -19,7 +19,7 @@ speakersResponse = None
 vboxapp = None
 speaker_id = 1
 mic_mode = 'open mic'
-PUSH_TO_TALK_OUTPUT_FILENAME = "Output/PUSH_TO_TALK_OUTPUT_FILE.wav"
+PUSH_TO_TALK_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
 PUSH_TO_RECORD_KEY = '5'
 
 
