@@ -10,6 +10,7 @@ import speech_recognition as sr
 import numpy as np
 import time
 import subLocal as SUB
+import translator
 
 
 class Pages(Enum):
@@ -551,11 +552,28 @@ class SettingsPage(Page):
         self.label_gpu_help.configure(state='disabled')
         self.label_gpu_help.pack(padx=20, pady=10)
 
+        self.use_deepl_var = customtkinter.BooleanVar(self, False)
+        use_deepl_checkbox = customtkinter.CTkCheckBox(master=self, text="Use deepl (api key required)", command=self.set_use_deepl_var,
+                                                       variable=self.use_deepl_var, onvalue=True, offvalue=False)
+        use_deepl_checkbox.pack(padx=20, pady=10, side=customtkinter.LEFT)
+        self.deepl_api_key_var = customtkinter.StringVar(self, '')
+        self.deepl_api_key_var.trace_add('write', self.update_deepl_api_key)
+        self.deepl_api_key_input = customtkinter.CTkEntry(
+            master=self, textvariable=self.deepl_api_key_var)
+        self.deepl_api_key_input.pack(
+            padx=20, pady=10, side=customtkinter.LEFT)
+
     def mic_mode_dropdown_callbakck(self, choice):
         STTS.mic_mode = choice
 
     def set_use_voicevox_local(self):
         STTS.use_local_voice_vox = self.check_var.get()
+
+    def set_use_deepl_var(self):
+        translator.use_deepl = self.use_deepl_var.get()
+
+    def update_deepl_api_key(self, str1, str2, str3):
+        translator.deepl_api_key = self.deepl_api_key_var.get()
 
     def change_push_to_talk_key(self):
         thread = Thread(target=self.listen_for_key)
