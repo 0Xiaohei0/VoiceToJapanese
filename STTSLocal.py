@@ -23,6 +23,8 @@ mic_mode = 'open mic'
 PUSH_TO_TALK_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
 PUSH_TO_RECORD_KEY = '5'
 
+whisper_filter_list = ['you', 'thank you.', 'thanks for watching.']
+
 
 def start_voicevox_server():
     global vboxapp
@@ -213,9 +215,14 @@ def start_STTS_pipeline():
         log_message("Whisper could not understand audio")
     except sr.RequestError as e:
         log_message("Could not request results from Whisper")
+    global whisper_filter_list
     if (input_text == ''):
         return
     log_message(f'Input: {input_text}')
+    print(f'looking for {input_text.strip().lower()} in {whisper_filter_list}')
+    if (input_text.strip().lower() in whisper_filter_list):
+        log_message(f'Input {input_text} was filtered.')
+        return
     with open("Input.txt", "w", encoding="utf-8") as file:
         file.write(input_text)
     start_TTS_pipeline(input_text)
