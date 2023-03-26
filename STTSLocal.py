@@ -1,4 +1,5 @@
 from threading import Thread
+import time
 import keyboard
 import pyaudio
 import speech_recognition as sr
@@ -12,15 +13,20 @@ import translator
 from voicevox import vboxclient
 
 
-VOICE_VOX_URL = "20.85.153.114"
+VOICE_VOX_URL_HIGH_SPEED = "https://api.su-shiki.com/v2/voicevox/audio/"
+VOICE_VOX_URL_LOW_SPEED = "https://api.tts.quest/v1/voicevox/"
 VOICE_VOX_URL_LOCAL = "127.0.0.1"
-use_local_voice_vox = False
+
+use_cloud_voice_vox = False
+voice_vox_api_key = ''
 speakersResponse = None
 vboxapp = None
 speaker_id = 1
 mic_mode = 'open mic'
 PUSH_TO_TALK_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
 PUSH_TO_RECORD_KEY = '5'
+
+whisper_filter_list = ['you', 'thank you.', 'thanks for watching.']
 
 
 def start_voicevox_server():
@@ -39,7 +45,14 @@ def initialize_speakers():
     if (vboxapp == None):
         start_voicevox_server()
     url = f"http://{VOICE_VOX_URL_LOCAL}:50021/speakers"
-    speakersResponse = requests.request("GET", url).json()
+    while True:
+        try:
+            response = requests.request("GET", url)
+            break
+        except:
+            print("Waiting for voicevox to start... ")
+            time.sleep(0.5)
+    speakersResponse = response.json()
 
 
 def get_speaker_names():
@@ -91,23 +104,50 @@ def stop_record_auto():
     log_message("Recording Stopped")
 
 
-def sendTextToSyntheizer(text, speaker_id):
-    current_voicevox_url = VOICE_VOX_URL
-    if (use_local_voice_vox):
-        current_voicevox_url = VOICE_VOX_URL_LOCAL
-    url = f"http://{current_voicevox_url}:50021/audio_query?text={text}&speaker={speaker_id}"
-
-    VoiceTextResponse = requests.request("POST", url)
-
-    url = f"http://{current_voicevox_url}:50021/synthesis?speaker={speaker_id}"
-    headers = {
-        'Content-Type': 'application/json'
-    }
-    payload = VoiceTextResponse
-    AudioResponse = requests.request(
-        "POST", url, data=payload)
+def sendTextToSyntheizer(text, speaker_id, api_key=''):
+    url = ''
+    if (api_key == ''):
+        print('No api key detected, sending request to low speed server.')
+        url = f"{VOICE_VOX_URL_LOW_SPEED}?text={text}&speaker={speaker_id}"
+    else:
+        print(
+            f'Api key {api_key} detected, sending request to high speed server.')
+        url = f"{VOICE_VOX_URL_HIGH_SPEED}?text={text}&speaker={speaker_id}&key={api_key}"
+    print(f"Sending POST request to: {url}")
+    response = requests.request(
+        "POST", url)
     log_message("Speech synthesized for text [{}]".format(text))
-    return AudioResponse
+    print(f'response: {response}')
+    # print(f'response.content: {response.content}')
+    if (api_key == ''):
+        response_json = response.json()
+        # print(response_json)
+
+        try:
+            # download wav file from response
+            wav_url = response_json['wavDownloadUrl']
+        except:
+            print("Failed to get wav download link.")
+            print(response_json)
+            return
+        print(f"Downloading wav response from {wav_url}")
+        wav_bytes = requests.get(wav_url).content
+        try:
+            PlayAudio(wav_bytes)
+        except:
+            print("Failed to play wav.")
+            print(wav_bytes)
+    else:
+        PlayAudio(response.content)
+
+
+def syntheize_audio(text, speaker_id):
+    global use_cloud_voice_vox
+    global voice_vox_api_key
+    if (use_cloud_voice_vox):
+        sendTextToSyntheizer(text, speaker_id, api_key=voice_vox_api_key)
+    else:
+        play_audio_from_local_syntheizer(text, speaker_id)
 
 
 def play_audio_from_local_syntheizer(text, speaker_id):
@@ -205,9 +245,14 @@ def start_STTS_pipeline():
         log_message("Whisper could not understand audio")
     except sr.RequestError as e:
         log_message("Could not request results from Whisper")
+    global whisper_filter_list
     if (input_text == ''):
         return
     log_message(f'Input: {input_text}')
+    print(f'looking for {input_text.strip().lower()} in {whisper_filter_list}')
+    if (input_text.strip().lower() in whisper_filter_list):
+        log_message(f'Input {input_text} was filtered.')
+        return
     with open("Input.txt", "w", encoding="utf-8") as file:
         file.write(input_text)
     start_TTS_pipeline(input_text)
@@ -229,7 +274,7 @@ def start_TTS_pipeline(input_text):
 
     with open("translation.txt", "w", encoding="utf-8") as file:
         file.write(input_processed_text)
-    play_audio_from_local_syntheizer(
+    syntheize_audio(
         input_processed_text, speaker_id)
 
     global last_input_text
@@ -254,7 +299,7 @@ def playOriginal():
         last_input_text_processed = last_input_text
     text_ja = romajitable.to_kana(last_input_text_processed).katakana
     text_ja = text_ja.replace('・', '')
-    play_audio_from_local_syntheizer(text_ja, last_voice_param)
+    syntheize_audio(text_ja, last_voice_param)
     log_message(f'playing input: {text_ja}')
 
 
