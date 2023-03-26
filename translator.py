@@ -1,8 +1,3 @@
-import argostranslate.package
-import argostranslate.translate
-import json
-import os
-import requests
 
 from transformers import pipeline
 

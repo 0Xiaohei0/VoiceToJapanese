@@ -2,44 +2,67 @@ import dict
 import whisper
 import speech_recognition as sr
 from translator import translate
+import torch
+from queue import Queue
+import time
 
 model = whisper.load_model("base")
 text_change_eventhandlers = []
 language_dict = dict.language_dict
 
+phrase_time_limit = 5
 input_language_name = 'Japanese'
 output_language_name = 'English'
 
 # obtain audio from the microphone
 r = sr.Recognizer()
 
+audio_queue = Queue()
+
+
+def check_gpu_status():
+    status = torch.cuda.is_available()
+    print(f'Using GPU: {torch.cuda.is_available()}')
+    return status
+
 
 def record_audio():
+    global audio_queue
+    global phrase_time_limit
     with sr.Microphone() as source:
-        r.adjust_for_ambient_noise(source)
-        print("Say something!")
-        audio = r.listen(source, phrase_time_limit=5)
-        send_audio_to_whisper(audio)
+        audio = r.listen(source, phrase_time_limit)
+        audio_queue.put(audio)
+
+
+def process_audio_queue():
+    if (not audio_queue.empty()):
+        audio = audio_queue.get()
+        text = r.recognize_whisper(audio, translate=True, language="japanese")
+        send_update_text_event(text)
 
 
 def send_audio_to_whisper(audio):
     print("recording compelete, sending to whisper")
     # recognize speech using Google Speech Recognition
     try:
-        text = r.recognize_whisper(audio)
+        text = r.recognize_whisper(audio, translate=True, language="japanese")
         print("Whisper thinks you said " + text)
-        translated_text = translate(
-            text, dict.language_dict[input_language_name][:2], dict.language_dict[output_language_name][:2])
-        send_update_text_event(translated_text)
+        send_update_text_event(text)
     except sr.UnknownValueError:
         print("Whisper could not understand audio")
     except sr.RequestError as e:
         print("Could not request results from Whisper")
 
 
-def start_translator():
+def start_recording_loop():
     while True:
         record_audio()
+
+
+def start_transcription_loop():
+    while True:
+        process_audio_queue()
+        time.sleep(0.1)
 
 
 def set_translation_text(text):
