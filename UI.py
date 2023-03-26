@@ -193,23 +193,23 @@ class SubtitlesFrame(customtkinter.CTkFrame):
         self.subtitle_overlay = None
         self.label = customtkinter.CTkLabel(
             master=self, text='Subtitle position')
-        self.label.pack(padx=10, pady=10)
+        self.label.grid(row=0, column=0, padx=10, pady=10, sticky='W')
         self.sub_pos_x = 0.2
         self.sub_pos_y = 0.8
         self.audio_level = 0.3
 
         xslider = customtkinter.CTkSlider(
             master=self, from_=0, to=100, command=self.slider_event_x)
-        xslider.pack(padx=10, pady=10)
+        xslider.grid(row=0, column=1, padx=10, pady=10, sticky='W')
         yslider = customtkinter.CTkSlider(
             master=self, from_=0, to=100,  command=self.slider_event_y)
-        yslider.pack(padx=10, pady=10)
+        yslider.grid(row=0, column=2, padx=10, pady=10, sticky='W')
 
         label_mic = customtkinter.CTkLabel(
             master=self, text='Mic activity: ')
-        label_mic.pack(padx=20, pady=10)
+        label_mic.grid(row=1, column=0, padx=10, pady=10, sticky='W')
         self.progressbar = customtkinter.CTkProgressBar(master=self, width=100)
-        self.progressbar.pack(padx=20, pady=0)
+        self.progressbar.grid(row=2, column=0, padx=10, pady=10, sticky='W')
         thread = Thread(target=self.update_mic_meter_loop)
         thread.start()
         self.listen_to_mic_thread = Thread(target=self.subtitle_listen_to_mic)
@@ -219,14 +219,16 @@ class SubtitlesFrame(customtkinter.CTkFrame):
             value=5)
         self.phrase_max_length_label = customtkinter.CTkLabel(
             master=self, text=f'Phrase max length: {self.phrase_max_length_var.get()}')
-        self.phrase_max_length_label.pack(padx=10, pady=10)
+        self.phrase_max_length_label.grid(
+            row=3, column=0, padx=10, pady=10, sticky='W')
         self.phrase_max_length_slider = customtkinter.CTkSlider(
             master=self, from_=3, to=30, command=self.update_phrase_max_length, variable=self.phrase_max_length_var)
-        self.phrase_max_length_slider.pack(padx=10, pady=10)
+        self.phrase_max_length_slider.grid(
+            row=3, column=1, padx=10, pady=10, sticky='W')
 
         audio_driver_label = customtkinter.CTkLabel(
             master=self, text='Audio driver: ')
-        audio_driver_label.pack(padx=20, pady=10)
+        audio_driver_label.grid(row=4, column=0, padx=10, pady=10, sticky='W')
         self.audio_drivers = self.get_audio_drivers()
         self.audio_driver_names = list(
             map(lambda driver: driver['name'], self.audio_drivers))
@@ -236,11 +238,12 @@ class SubtitlesFrame(customtkinter.CTkFrame):
                                                               values=self.audio_driver_names,
                                                               command=self.audio_driver_dropdown_callback,
                                                               variable=self.audio_input_combobox_var)
-        self.audio_input_combobox.pack(padx=20, pady=0)
+        self.audio_input_combobox.grid(
+            row=4, column=1, padx=10, pady=10, sticky='W')
 
         audio_input_label = customtkinter.CTkLabel(
             master=self, text='Input device: ')
-        audio_input_label.pack(padx=20, pady=10)
+        audio_input_label.grid(row=5, column=0, padx=10, pady=10, sticky='W')
         self.audio_devices = self.get_audio_devices()
         self.input_audio_devices = list(filter(
             lambda device: device['max_input_channels'] > 0, self.audio_devices))
@@ -253,11 +256,21 @@ class SubtitlesFrame(customtkinter.CTkFrame):
                                                               values=self.input_audio_device_names,
                                                               command=self.audio_input_dropdown_callbakck,
                                                               variable=self.audio_input_combobox_var)
-        self.audio_input_combobox.pack(padx=20, pady=0)
+        self.audio_input_combobox.grid(
+            row=5, column=1, padx=10, pady=10, sticky='W')
 
         self.toggle_overlay_button = customtkinter.CTkButton(
             self, text="start overlay", command=self.toggle_subtitle_button_callback)
-        self.toggle_overlay_button.pack(padx=20, pady=20)
+        self.toggle_overlay_button.grid(
+            row=6, column=0, padx=10, pady=10, sticky='W')
+
+        self.hide_border_var = customtkinter.BooleanVar(self, True)
+        show_border_checkbox = customtkinter.CTkCheckBox(master=self, text="Hide border on overlay", command=self.set_show_border,
+                                                         variable=self.hide_border_var, onvalue=True, offvalue=False)
+        # show_border_checkbox.grid(
+        #     row=4, column=0, padx=10, pady=10, sticky='W')
+        show_border_checkbox.grid(
+            row=6, column=1, padx=10, pady=10, sticky='W')
 
     def slider_event_x(self, value):
         self.sub_pos_x = value/100
@@ -280,11 +293,11 @@ class SubtitlesFrame(customtkinter.CTkFrame):
             # create window if its None or destroyed
             self.open_subtitle_overlay()
             self.toggle_overlay_button.configure(
-                text="Stop Recording", fg_color='#fc7b5b')
+                text="close overlay", fg_color='#fc7b5b')
         else:
             self.stop_subtitle_overlay()
             self.toggle_overlay_button.configure(
-                text="Start Recording", fg_color='grey')
+                text="start overlay", fg_color='grey')
 
     def open_subtitle_overlay(self):
         if self.subtitle_overlay is None or not self.subtitle_overlay.winfo_exists():
@@ -292,6 +305,7 @@ class SubtitlesFrame(customtkinter.CTkFrame):
             self.subtitle_overlay = SubtitleOverlay()
             SUB.start()
             SUB.text_change_eventhandlers.append(self.update_text)
+            self.subtitle_overlay.overrideredirect(self.hide_border_var.get())
         else:
             self.subtitle_overlay.focus()  # if window exists focus it
 
@@ -373,14 +387,19 @@ class SubtitlesFrame(customtkinter.CTkFrame):
         with self._subtitle_mic_stream:
             sd.sleep(10000000)
 
+    def set_show_border(self):
+        if not (self.subtitle_overlay is None or not self.subtitle_overlay.winfo_exists()):
+            # if subtitle_overlay exists
+            self.subtitle_overlay.overrideredirect(self.hide_border_var.get())
+
 
 class SubtitleOverlay(customtkinter.CTkToplevel):
     def __init__(self):
         super().__init__()
         self.geometry("1920x1080+0+0")
         self.title("app")
-        self.resizable(False, False)
-        self.overrideredirect(1)
+        self.resizable(True, True)
+        # self.overrideredirect(1)
         self.attributes("-topmost", True)
         self.wm_attributes('-transparentcolor', 'black')
         self.configure(fg_color='black')

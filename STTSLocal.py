@@ -126,12 +126,17 @@ def sendTextToSyntheizer(text, speaker_id, api_key=''):
         try:
             # download wav file from response
             wav_url = response_json['wavDownloadUrl']
-            print(f"Downloading wav response from {wav_url}")
-            wav_bytes = requests.get(wav_url).content
+        except:
+            print("Failed to get wav download link.")
+            print(response_json)
+            return
+        print(f"Downloading wav response from {wav_url}")
+        wav_bytes = requests.get(wav_url).content
+        try:
             PlayAudio(wav_bytes)
         except:
-            print("Failed to download wav.")
-            print(response_json)
+            print("Failed to play wav.")
+            print(wav_bytes)
     else:
         PlayAudio(response.content)
 
