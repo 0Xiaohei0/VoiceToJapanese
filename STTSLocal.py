@@ -1,4 +1,5 @@
 from threading import Thread
+import time
 import keyboard
 import pyaudio
 import speech_recognition as sr
@@ -39,7 +40,14 @@ def initialize_speakers():
     if (vboxapp == None):
         start_voicevox_server()
     url = f"http://{VOICE_VOX_URL_LOCAL}:50021/speakers"
-    speakersResponse = requests.request("GET", url).json()
+    while True:
+        try:
+            response = requests.request("GET", url)
+            break
+        except:
+            print("Waiting for voicevox to start... ")
+            time.sleep(0.5)
+    speakersResponse = response.json()
 
 
 def get_speaker_names():

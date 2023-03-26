@@ -1,18 +1,22 @@
 from threading import Thread
 import customtkinter
 import keyboard
+import pyaudio
 import STTSLocal as STTS
 from threading import Event
 from enum import Enum
 import sounddevice as sd
+import speech_recognition as sr
 import numpy as np
 import time
+import subLocal as SUB
 
 
 class Pages(Enum):
     AUDIO_INPUT = 0
     TEXT_INPUT = 1
     SETTINGS = 2
+    SUBTITLE = 3
 
 
 current_page = Pages.AUDIO_INPUT
@@ -48,6 +52,18 @@ class SidebarFrame(customtkinter.CTkFrame):
                                                     fg_color='grey'
                                                     )
         text_input_button.pack(anchor="s")
+
+        subtitles_button = customtkinter.CTkButton(master=self,
+                                                   width=120,
+                                                   height=32,
+                                                   border_width=0,
+                                                   corner_radius=0,
+                                                   text="Subtitles",
+                                                   command=lambda: self.change_page(
+                                                        Pages.SUBTITLE),
+                                                   fg_color='grey'
+                                                   )
+        subtitles_button.pack(anchor="s")
 
         button = customtkinter.CTkButton(master=self,
                                          width=120,
@@ -170,6 +186,113 @@ class TextBoxFrame(customtkinter.CTkFrame):
         STTS.start_TTS_pipeline(self.text_input.get("1.0", customtkinter.END))
 
 
+class SubtitlesFrame(customtkinter.CTkFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.subtitle_overlay = None
+        self.label = customtkinter.CTkLabel(
+            master=self, text='Subtitle position')
+        self.label.pack(padx=10, pady=10)
+        self.sub_pos_x = 0.2
+        self.sub_pos_y = 0.8
+
+        xslider = customtkinter.CTkSlider(
+            master=self, from_=0, to=100, command=self.slider_event_x)
+        xslider.pack(padx=10, pady=10)
+        yslider = customtkinter.CTkSlider(
+            master=self, from_=0, to=100,  command=self.slider_event_y)
+        yslider.pack(padx=10, pady=10)
+
+        label_mic = customtkinter.CTkLabel(
+            master=self, text='Mic activity: ')
+        label_mic.pack(padx=20, pady=10)
+        self.progressbar = customtkinter.CTkProgressBar(master=self, width=100)
+        self.progressbar.pack(padx=20, pady=0)
+        thread = Thread(target=self.update_mic_meter_loop)
+        thread.start()
+
+        self.phrase_max_length_var = customtkinter.IntVar(
+            value=5)
+        self.phrase_max_length_label = customtkinter.CTkLabel(
+            master=self, text=f'Phrase max length: {self.phrase_max_length_var.get()}')
+        self.phrase_max_length_label.pack(padx=10, pady=10)
+        self.phrase_max_length_slider = customtkinter.CTkSlider(
+            master=self, from_=3, to=30, command=self.update_phrase_max_length, variable=self.phrase_max_length_var)
+        self.phrase_max_length_slider.pack(padx=10, pady=10)
+
+        self.toggle_overlay_button = customtkinter.CTkButton(
+            self, text="start overlay", command=self.toggle_subtitle_button_callback)
+        self.toggle_overlay_button.pack(padx=20, pady=20)
+
+    def slider_event_x(self, value):
+        self.sub_pos_x = value/100
+        self.move_text(self.sub_pos_x, self.sub_pos_y)
+
+    def slider_event_y(self, value):
+        self.sub_pos_y = value/100
+        self.move_text(self.sub_pos_x, self.sub_pos_y)
+
+    def update_mic_meter_loop(self):
+        while True:
+            self.update_mic_meter()
+
+    def update_mic_meter(self):
+        global audio_level
+        self.progressbar.set(audio_level)
+        time.sleep(0.01)
+
+    def toggle_subtitle_button_callback(self):
+        if self.subtitle_overlay is None or not self.subtitle_overlay.winfo_exists():
+            # create window if its None or destroyed
+            self.open_subtitle_overlay()
+            self.toggle_overlay_button.configure(
+                text="Stop Recording", fg_color='#fc7b5b')
+        else:
+            self.stop_subtitle_overlay()
+            self.toggle_overlay_button.configure(
+                text="Start Recording", fg_color='grey')
+
+    def open_subtitle_overlay(self):
+        if self.subtitle_overlay is None or not self.subtitle_overlay.winfo_exists():
+            # create window if its None or destroyed
+            self.subtitle_overlay = SubtitleOverlay()
+            SUB.start()
+            SUB.text_change_eventhandlers.append(self.update_text)
+        else:
+            self.subtitle_overlay.focus()  # if window exists focus it
+
+    def stop_subtitle_overlay(self):
+        if not (self.subtitle_overlay is None or not self.subtitle_overlay.winfo_exists()):
+            SUB.stop()
+            self.subtitle_overlay.destroy()
+
+    def update_text(self, text):
+        self.subtitle_overlay.label.configure(text=text)
+
+    def move_text(self, x, y):
+        self.subtitle_overlay.place(relx=x, rely=y, anchor='w')
+
+    def update_phrase_max_length(self, value):
+        SUB.m_phrase_time_limit = value
+        self.phrase_max_length_label.configure(
+            text=f'Phrase max length: {self.phrase_max_length_var.get()}')
+
+
+class SubtitleOverlay(customtkinter.CTkToplevel):
+    def __init__(self):
+        super().__init__()
+        self.geometry("1920x1080+0+0")
+        self.title("app")
+        self.resizable(False, False)
+        self.overrideredirect(1)
+        self.attributes("-topmost", True)
+        self.wm_attributes('-transparentcolor', 'black')
+        self.configure(fg_color='black')
+        self.label = customtkinter.CTkLabel(
+            master=self, text='default text', fg_color='black', text_color="white", font=("Arial", 45), wraplength=1500, anchor='w')
+        self.label.place(relx=0.2, rely=0.8, anchor='w')
+
+
 class OptionsFrame(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
@@ -281,6 +404,14 @@ class TextInputPage(Page):
         options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
 
 
+class SubtitlesPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        subtitles_frame = SubtitlesFrame(
+            master=self, width=500, corner_radius=8)
+        subtitles_frame.pack(padx=0, pady=0)
+
+
 class SettingsPage(Page):
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
@@ -311,6 +442,29 @@ class SettingsPage(Page):
                                                              fg_color='grey'
                                                              )
         self.change_mic_key_Button.pack(anchor="s")
+        self.get_audio_devices()
+        # audio_input_label = customtkinter.CTkLabel(
+        #     master=self, text='Input device: ')
+        # audio_input_label.pack(padx=20, pady=10)
+        # self.audio_devices = self.get_audio_devices()
+        # self.audio_input_combobox_var = customtkinter.StringVar(
+        #     value=self.audio_devices[0])
+        # self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
+        #                                                       values=self.audio_devices,
+        #                                                       command=self.audio_input_dropdown_callbakck,
+        #                                                       variable=self.audio_input_combobox_var)
+        # self.audio_input_combobox.pack(padx=20, pady=0)
+
+        self.label_gpu = customtkinter.CTkLabel(
+            master=self, text=f'NVIDIA CUDA 11.7 active: {SUB.check_gpu_status()}')
+        self.label_gpu.pack(padx=20, pady=10)
+        self.label_gpu_help = customtkinter.CTkTextbox(
+            master=self, width=400, height=100)
+        self.label_gpu_help.insert(
+            "0.0", ('If you have a compatible NVIDIA GPU, you can download CUDA Toolkit to utilize your GPU: '
+                    'https://developer.nvidia.com/cuda-11-7-1-download-archive?target_os=Windows&target_arch=x86_64'))
+        self.label_gpu_help.configure(state='disabled')
+        self.label_gpu_help.pack(padx=20, pady=10)
 
     def mic_mode_dropdown_callbakck(self, choice):
         STTS.mic_mode = choice
@@ -331,6 +485,16 @@ class SettingsPage(Page):
             text=f'push to talk key: {STTS.PUSH_TO_RECORD_KEY}')
         self.change_mic_key_Button.configure(fg_color='grey')
 
+    def audio_input_dropdown_callbakck(self, choice):
+        print(choice)
+
+    def get_audio_devices(self):
+        output = []
+        for mic_name in enumerate(sr.Microphone.list_microphone_names()):
+            print(mic_name)
+            output.append(mic_name)
+        return output
+
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -345,12 +509,14 @@ class App(customtkinter.CTk):
         audioInputPage = AudioInputPage(self)
         textInputPage = TextInputPage(self)
         settingsPage = SettingsPage(self)
+        subtitlesPage = SubtitlesPage(self)
         container = customtkinter.CTkFrame(
             self, width=700, height=700, bg_color='#fafafa')
         container.grid(row=0, column=1, padx=20, pady=20, sticky="nswe")
 
         audioInputPage.place(in_=container, x=0, y=0)
         textInputPage.place(in_=container, x=0, y=0)
+        subtitlesPage.place(in_=container, x=0, y=0)
         settingsPage.place(in_=container, x=0, y=0)
 
         audioInputPage.show()
@@ -364,6 +530,9 @@ class App(customtkinter.CTk):
             elif (current_page == Pages.TEXT_INPUT):
                 container.lift()
                 textInputPage.show()
+            elif (current_page == Pages.SUBTITLE):
+                container.lift()
+                subtitlesPage.show()
             elif (current_page == Pages.SETTINGS):
                 container.lift()
                 settingsPage.show()

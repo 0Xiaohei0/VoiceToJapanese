@@ -5,19 +5,35 @@ from translator import translate
 import torch
 from queue import Queue
 import time
+from threading import Thread
+
 
 model = whisper.load_model("base")
 text_change_eventhandlers = []
 language_dict = dict.language_dict
 
-phrase_time_limit = 5
+m_phrase_time_limit = 5
 input_language_name = 'Japanese'
 output_language_name = 'English'
-
+is_running = False
 # obtain audio from the microphone
 r = sr.Recognizer()
 
 audio_queue = Queue()
+
+
+def start():
+    global is_running
+    is_running = True
+    thread_recording = Thread(target=start_recording_loop)
+    thread_recording.start()
+    thread_transcription = Thread(target=start_transcription_loop)
+    thread_transcription.start()
+
+
+def stop():
+    global is_running
+    is_running = False
 
 
 def check_gpu_status():
@@ -28,17 +44,26 @@ def check_gpu_status():
 
 def record_audio():
     global audio_queue
-    global phrase_time_limit
+    global m_phrase_time_limit
     with sr.Microphone() as source:
-        audio = r.listen(source, phrase_time_limit)
+        print("Recording...")
+        audio = r.listen(source, timeout=None,
+                         phrase_time_limit=m_phrase_time_limit)
         audio_queue.put(audio)
+        print("Added audio to process queue.")
 
 
 def process_audio_queue():
     if (not audio_queue.empty()):
         audio = audio_queue.get()
-        text = r.recognize_whisper(audio, translate=True, language="japanese")
-        send_update_text_event(text)
+        try:
+            text = r.recognize_whisper(
+                audio, translate=True, language="japanese")
+            send_update_text_event(text)
+        except sr.UnknownValueError:
+            print("Whisper could not understand audio")
+        except sr.RequestError as e:
+            print("Could not request results from Whisper")
 
 
 def send_audio_to_whisper(audio):
@@ -55,12 +80,12 @@ def send_audio_to_whisper(audio):
 
 
 def start_recording_loop():
-    while True:
+    while is_running:
         record_audio()
 
 
 def start_transcription_loop():
-    while True:
+    while is_running:
         process_audio_queue()
         time.sleep(0.1)
 
