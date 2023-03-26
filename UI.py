@@ -513,16 +513,9 @@ class SubtitlesPage(Page):
 class SettingsPage(Page):
     def __init__(self, *args, **kwargs):
         Page.__init__(self, *args, **kwargs)
-        self.use_local_voice_vox = customtkinter.BooleanVar(self, 1)
-        self.check_var = customtkinter.BooleanVar(self, False)
-
-        use_voicevox_local_checkbox = customtkinter.CTkCheckBox(master=self, text="Is running voicevox locally", command=self.set_use_voicevox_local,
-                                                                variable=self.check_var, onvalue=True, offvalue=False)
-        # use_voicevox_local_checkbox.pack(padx=20, pady=10)
-
         mic_mode_label = customtkinter.CTkLabel(
             master=self, text='Microphone mode: ')
-        mic_mode_label.pack(padx=20, pady=10)
+        mic_mode_label.grid(row=0, column=0, padx=10, pady=10, sticky='W')
         self.mic_mode_combobox_var = customtkinter.StringVar(
             value='open mic')
         self.mic_mode_combobox = customtkinter.CTkComboBox(master=self,
@@ -530,50 +523,69 @@ class SettingsPage(Page):
                                                                'open mic', 'push to talk'],
                                                            command=self.mic_mode_dropdown_callbakck,
                                                            variable=self.mic_mode_combobox_var)
-        self.mic_mode_combobox.pack(padx=20, pady=0)
+        self.mic_mode_combobox.grid(
+            row=0, column=1, padx=10, pady=10, sticky='W')
         self.mic_key_label = customtkinter.CTkLabel(
             master=self, text=f'push to talk key: {STTS.PUSH_TO_RECORD_KEY}')
-        self.mic_key_label.pack(padx=20, pady=10)
+        self.mic_key_label.grid(row=1, column=0, padx=10, pady=10, sticky='W')
         self.change_mic_key_Button = customtkinter.CTkButton(master=self,
                                                              text="change key",
                                                              command=self.change_push_to_talk_key,
                                                              fg_color='grey'
                                                              )
-        self.change_mic_key_Button.pack(anchor="s")
+        self.change_mic_key_Button.grid(
+            row=1, column=1, padx=10, pady=10, sticky='W')
 
         self.label_gpu = customtkinter.CTkLabel(
             master=self, text=f'NVIDIA CUDA 11.7 active: {SUB.check_gpu_status()}')
-        self.label_gpu.pack(padx=20, pady=10)
+        self.label_gpu.grid(row=2, column=0, padx=10, pady=10, sticky='W')
         self.label_gpu_help = customtkinter.CTkTextbox(
-            master=self, width=400, height=100)
+            master=self, width=300, height=100)
         self.label_gpu_help.insert(
             "0.0", ('If you have a compatible NVIDIA GPU, you can download CUDA Toolkit to utilize your GPU: '
                     'https://developer.nvidia.com/cuda-11-7-1-download-archive?target_os=Windows&target_arch=x86_64'))
         self.label_gpu_help.configure(state='disabled')
-        self.label_gpu_help.pack(padx=20, pady=10)
+        self.label_gpu_help.grid(row=2, column=1, padx=10, pady=10, sticky='W')
 
         self.use_deepl_var = customtkinter.BooleanVar(self, False)
         use_deepl_checkbox = customtkinter.CTkCheckBox(master=self, text="Use deepl (api key required)", command=self.set_use_deepl_var,
                                                        variable=self.use_deepl_var, onvalue=True, offvalue=False)
-        use_deepl_checkbox.pack(padx=20, pady=10, side=customtkinter.LEFT)
+        use_deepl_checkbox.grid(row=3, column=0, padx=10, pady=10, sticky='W')
         self.deepl_api_key_var = customtkinter.StringVar(self, '')
         self.deepl_api_key_var.trace_add('write', self.update_deepl_api_key)
         self.deepl_api_key_input = customtkinter.CTkEntry(
             master=self, textvariable=self.deepl_api_key_var)
-        self.deepl_api_key_input.pack(
-            padx=20, pady=10, side=customtkinter.LEFT)
+        self.deepl_api_key_input.grid(
+            row=3, column=1, padx=10, pady=10, sticky='W')
+
+        self.use_voicevox_var = customtkinter.BooleanVar(self, False)
+        use_voicevox_checkbox = customtkinter.CTkCheckBox(master=self, text="Use voicevox on cloud (api key optional)", command=self.set_use_voicevox_var,
+                                                          variable=self.use_voicevox_var, onvalue=True, offvalue=False)
+        use_voicevox_checkbox.grid(
+            row=4, column=0, padx=10, pady=10, sticky='W')
+        self.voicevox_api_key_var = customtkinter.StringVar(self, '')
+        self.voicevox_api_key_var.trace_add(
+            'write', self.update_voicevox_api_key)
+        self.voicevox_api_key_input = customtkinter.CTkEntry(
+            master=self, textvariable=self.voicevox_api_key_var)
+        self.voicevox_api_key_input.grid(
+            row=4, column=1, padx=10, pady=10, sticky='W')
 
     def mic_mode_dropdown_callbakck(self, choice):
         STTS.mic_mode = choice
-
-    def set_use_voicevox_local(self):
-        STTS.use_local_voice_vox = self.check_var.get()
 
     def set_use_deepl_var(self):
         translator.use_deepl = self.use_deepl_var.get()
 
     def update_deepl_api_key(self, str1, str2, str3):
         translator.deepl_api_key = self.deepl_api_key_var.get()
+
+    def set_use_voicevox_var(self):
+        print(f'use_cloud_voice_vox set to {self.use_voicevox_var.get()}')
+        STTS.use_cloud_voice_vox = self.use_voicevox_var.get()
+
+    def update_voicevox_api_key(self, str1, str2, str3):
+        STTS.voice_vox_api_key = self.voicevox_api_key_var.get()
 
     def change_push_to_talk_key(self):
         thread = Thread(target=self.listen_for_key)
