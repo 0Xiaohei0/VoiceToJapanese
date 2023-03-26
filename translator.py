@@ -4,7 +4,8 @@ from transformers import pipeline
 
 def translate(text, from_code, to_code):
     if (from_code == 'en' and to_code == 'ja'):
-        fugu_translator = pipeline('translation', model='staka/fugumt-en-ja')
+        fugu_translator = pipeline(
+            'translation', model='./models--staka--fugumt-en-ja/snapshots/2d6da1c7352386e12ddd46ce3d0bbb2310200fcc')
         return fugu_translator(text)[0]['translation_text']
     else:
         print(f"no avaliable model to translate from{from_code} to {to_code}")
