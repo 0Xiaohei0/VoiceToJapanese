@@ -16,6 +16,7 @@ m_phrase_time_limit = 5
 input_language_name = 'Japanese'
 output_language_name = 'English'
 is_running = False
+device_idx = None
 # obtain audio from the microphone
 r = sr.Recognizer()
 
@@ -45,8 +46,12 @@ def check_gpu_status():
 def record_audio():
     global audio_queue
     global m_phrase_time_limit
-    with sr.Microphone() as source:
-        print("Recording...")
+    global device_idx
+    with sr.Microphone(device_index=device_idx) as source:
+        if (device_idx == None):
+            print("Recording with default microphone...")
+        else:
+            print(f"Recording with deviceid: {device_idx}...")
         audio = r.listen(source, timeout=None,
                          phrase_time_limit=m_phrase_time_limit)
         audio_queue.put(audio)

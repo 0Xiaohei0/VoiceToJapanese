@@ -195,6 +195,7 @@ class SubtitlesFrame(customtkinter.CTkFrame):
         self.label.pack(padx=10, pady=10)
         self.sub_pos_x = 0.2
         self.sub_pos_y = 0.8
+        self.audio_level = 0.3
 
         xslider = customtkinter.CTkSlider(
             master=self, from_=0, to=100, command=self.slider_event_x)
@@ -210,6 +211,8 @@ class SubtitlesFrame(customtkinter.CTkFrame):
         self.progressbar.pack(padx=20, pady=0)
         thread = Thread(target=self.update_mic_meter_loop)
         thread.start()
+        self.listen_to_mic_thread = Thread(target=self.subtitle_listen_to_mic)
+        self.listen_to_mic_thread.start()
 
         self.phrase_max_length_var = customtkinter.IntVar(
             value=5)
@@ -219,6 +222,37 @@ class SubtitlesFrame(customtkinter.CTkFrame):
         self.phrase_max_length_slider = customtkinter.CTkSlider(
             master=self, from_=3, to=30, command=self.update_phrase_max_length, variable=self.phrase_max_length_var)
         self.phrase_max_length_slider.pack(padx=10, pady=10)
+
+        audio_driver_label = customtkinter.CTkLabel(
+            master=self, text='Audio driver: ')
+        audio_driver_label.pack(padx=20, pady=10)
+        self.audio_drivers = self.get_audio_drivers()
+        self.audio_driver_names = list(
+            map(lambda driver: driver['name'], self.audio_drivers))
+        self.audio_input_combobox_var = customtkinter.StringVar(
+            value=self.audio_driver_names[0])
+        self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
+                                                              values=self.audio_driver_names,
+                                                              command=self.audio_driver_dropdown_callback,
+                                                              variable=self.audio_input_combobox_var)
+        self.audio_input_combobox.pack(padx=20, pady=0)
+
+        audio_input_label = customtkinter.CTkLabel(
+            master=self, text='Input device: ')
+        audio_input_label.pack(padx=20, pady=10)
+        self.audio_devices = self.get_audio_devices()
+        self.input_audio_devices = list(filter(
+            lambda device: device['max_input_channels'] > 0, self.audio_devices))
+        self.input_audio_device_names = list(
+            map(lambda device: device['name'], self.input_audio_devices))
+        self.input_audio_device_names.insert(0, 'Default')
+        self.audio_input_combobox_var = customtkinter.StringVar(
+            value='Default')
+        self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
+                                                              values=self.input_audio_device_names,
+                                                              command=self.audio_input_dropdown_callbakck,
+                                                              variable=self.audio_input_combobox_var)
+        self.audio_input_combobox.pack(padx=20, pady=0)
 
         self.toggle_overlay_button = customtkinter.CTkButton(
             self, text="start overlay", command=self.toggle_subtitle_button_callback)
@@ -237,8 +271,7 @@ class SubtitlesFrame(customtkinter.CTkFrame):
             self.update_mic_meter()
 
     def update_mic_meter(self):
-        global audio_level
-        self.progressbar.set(audio_level)
+        self.progressbar.set(self.audio_level)
         time.sleep(0.01)
 
     def toggle_subtitle_button_callback(self):
@@ -270,12 +303,74 @@ class SubtitlesFrame(customtkinter.CTkFrame):
         self.subtitle_overlay.label.configure(text=text)
 
     def move_text(self, x, y):
-        self.subtitle_overlay.place(relx=x, rely=y, anchor='w')
+        self.subtitle_overlay.label.place(relx=x, rely=y, anchor='w')
 
     def update_phrase_max_length(self, value):
         SUB.m_phrase_time_limit = value
         self.phrase_max_length_label.configure(
             text=f'Phrase max length: {self.phrase_max_length_var.get()}')
+
+    def audio_input_dropdown_callbakck(self, choice):
+        device_id = None
+        if (choice == 'Default'):
+            device_id = None
+        else:
+            print(choice)
+            device = next(
+                device for device in self.input_audio_devices if device['name'] == choice)
+            device_id = device['index']
+            print(device)
+        print(f'Setting Input audio device id to: {device_id}')
+        SUB.device_idx = device_id
+        self._subtitle_mic_stream.stop()
+        self.listen_to_mic_thread = Thread(target=self.subtitle_listen_to_mic)
+        self.listen_to_mic_thread.start()
+
+    def audio_driver_dropdown_callback(self, choice):
+        print(choice)
+        driver_idx = 0
+        for idx, driver in enumerate(self.audio_drivers):
+            if driver['name'] == choice:
+                driver_idx = idx
+        print(f'Selected driver with idx: {driver_idx}')
+        self.audio_devices = self.get_audio_devices(hostapi=driver_idx)
+        self.input_audio_devices = list(filter(
+            lambda device: device['max_input_channels'] > 0, self.audio_devices))
+        self.input_audio_device_names = list(
+            map(lambda device: device['name'], self.input_audio_devices))
+        self.input_audio_device_names.insert(0, 'Default')
+        self.audio_input_combobox_var = customtkinter.StringVar(
+            value='Default')
+        self.audio_input_combobox.configure(values=self.input_audio_device_names,
+                                            variable=self.audio_input_combobox_var)
+        print(self.input_audio_device_names)
+        device_id = None
+        print(f'Setting Input audio device id to: {device_id}')
+        SUB.device_idx = device_id
+        self._subtitle_mic_stream.stop()
+        self.listen_to_mic_thread = Thread(target=self.subtitle_listen_to_mic)
+        self.listen_to_mic_thread.start()
+
+    def get_audio_drivers(self):
+        hostapis = sd.query_hostapis()
+        # print(hostapis)
+        return hostapis
+
+    def get_audio_devices(self, hostapi=0):
+        devices = list(filter(
+            lambda device: device['hostapi'] == hostapi, sd.query_devices()))
+        # print(devices)
+        return devices
+
+    def update_sound(self, indata, outdata, frames, time, status):
+        self.audio_level = np.linalg.norm(indata)/10
+        # print("|" * int(volume_norm))
+
+    def subtitle_listen_to_mic(self):
+        self._subtitle_mic_stream = sd.Stream(
+            callback=self.update_sound, device=(SUB.device_idx, None))
+        with self._subtitle_mic_stream:
+            sd.sleep(10000000)
 
 
 class SubtitleOverlay(customtkinter.CTkToplevel):
@@ -442,18 +537,6 @@ class SettingsPage(Page):
                                                              fg_color='grey'
                                                              )
         self.change_mic_key_Button.pack(anchor="s")
-        self.get_audio_devices()
-        # audio_input_label = customtkinter.CTkLabel(
-        #     master=self, text='Input device: ')
-        # audio_input_label.pack(padx=20, pady=10)
-        # self.audio_devices = self.get_audio_devices()
-        # self.audio_input_combobox_var = customtkinter.StringVar(
-        #     value=self.audio_devices[0])
-        # self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
-        #                                                       values=self.audio_devices,
-        #                                                       command=self.audio_input_dropdown_callbakck,
-        #                                                       variable=self.audio_input_combobox_var)
-        # self.audio_input_combobox.pack(padx=20, pady=0)
 
         self.label_gpu = customtkinter.CTkLabel(
             master=self, text=f'NVIDIA CUDA 11.7 active: {SUB.check_gpu_status()}')
@@ -484,16 +567,6 @@ class SettingsPage(Page):
         self.mic_key_label.configure(
             text=f'push to talk key: {STTS.PUSH_TO_RECORD_KEY}')
         self.change_mic_key_Button.configure(fg_color='grey')
-
-    def audio_input_dropdown_callbakck(self, choice):
-        print(choice)
-
-    def get_audio_devices(self):
-        output = []
-        for mic_name in enumerate(sr.Microphone.list_microphone_names()):
-            print(mic_name)
-            output.append(mic_name)
-        return output
 
 
 class App(customtkinter.CTk):
