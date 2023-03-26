@@ -362,13 +362,13 @@ class SubtitlesFrame(customtkinter.CTkFrame):
         # print(devices)
         return devices
 
-    def update_sound(self, indata, outdata, frames, time, status):
+    def update_sound(self, indata, outdata, frames, time):
         self.audio_level = np.linalg.norm(indata)/10
         # print("|" * int(volume_norm))
 
     def subtitle_listen_to_mic(self):
-        self._subtitle_mic_stream = sd.Stream(
-            callback=self.update_sound, device=(SUB.device_idx, None))
+        self._subtitle_mic_stream = sd.InputStream(
+            callback=self.update_sound, device=SUB.device_idx)
         with self._subtitle_mic_stream:
             sd.sleep(10000000)
 
@@ -464,6 +464,8 @@ class OptionsFrame(customtkinter.CTkFrame):
         self.style_combobox_var = customtkinter.StringVar(
             value=self.selected_style['name'])
         self.style_combobox.configure(variable=self.style_combobox_var)
+        STTS.speaker_id = self.selected_style['id']
+        print(f'Changed speaker ID to: {STTS.speaker_id}')
 
     def style_dropdown_callbakck(self, choice):
         STTS.speaker_id = next(
