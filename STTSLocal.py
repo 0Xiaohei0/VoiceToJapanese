@@ -160,8 +160,18 @@ def syntheize_audio(text, speaker_id):
 
 
 def local_synthesize(text, speaker_id):
-    vboxapp.run(text=text, speaker=speaker_id,
-                filename=VOICE_OUTPUT_FILENAME)
+    VoiceTextResponse = requests.request(
+        "POST", f"http://127.0.0.1:50021/audio_query?text={text}&speaker={speaker_id}")
+    AudioResponse = requests.request(
+        "POST", f"http://127.0.0.1:50021/synthesis?speaker={speaker_id}", data=VoiceTextResponse)
+    try:
+        with open(VOICE_OUTPUT_FILENAME, "wb") as file:
+            file.write(AudioResponse.content)
+    except:
+        print("Failed to write to wav file.")
+        print(f'wav_bytes: {AudioResponse.content}')
+    # vboxapp.run(text=text, speaker=speaker_id,
+    #             filename=VOICE_OUTPUT_FILENAME)
 
 
 def PlayAudio():
@@ -296,7 +306,7 @@ def start_TTS_pipeline(input_text):
     log_message(
         f"Speech synthesized for text [{input_processed_text}] ({step_timer.end()}s)")
     log_message(
-        f'Total time: ({pipeline_elapsed_time + pipeline_timer.end()}s)')
+        f'Total time: ({round(pipeline_elapsed_time + pipeline_timer.end(),2)}s)')
     PlayAudio()
 
     global last_input_text
