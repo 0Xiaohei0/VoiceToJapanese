@@ -4,6 +4,13 @@ import json
 
 use_deepl = False
 deepl_api_key = ''
+fugu_translator = None
+
+
+def initialize():
+    global fugu_translator
+    fugu_translator = pipeline(
+        'translation', model='./models--staka--fugumt-en-ja/snapshots/2d6da1c7352386e12ddd46ce3d0bbb2310200fcc')
 
 
 def translate(text, from_code, to_code):
@@ -32,8 +39,10 @@ def translate(text, from_code, to_code):
 
     else:
         if (from_code == 'en' and to_code == 'ja'):
-            fugu_translator = pipeline(
-                'translation', model='./models--staka--fugumt-en-ja/snapshots/2d6da1c7352386e12ddd46ce3d0bbb2310200fcc')
+            global fugu_translator
+            if (fugu_translator == None):
+                fugu_translator = pipeline(
+                    'translation', model='./models--staka--fugumt-en-ja/snapshots/2d6da1c7352386e12ddd46ce3d0bbb2310200fcc')
             return fugu_translator(text)[0]['translation_text']
         else:
             print(

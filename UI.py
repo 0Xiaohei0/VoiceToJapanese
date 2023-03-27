@@ -681,8 +681,12 @@ def listen_to_mic():
 thread = Thread(target=listen_to_mic)
 thread.start()
 
+print("Starting voicevox server...")
 STTS.start_voicevox_server()
-
+print("Initializing tts model...")
+STTS.initialize_model()
+print("Initializing translator...")
+translator.initialize()
 app = App()
 app.configure(background='#fafafa')
 app.mainloop()

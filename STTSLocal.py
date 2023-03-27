@@ -14,7 +14,6 @@ from voicevox import vboxclient
 from timer import Timer
 import whisper
 
-model = whisper.load_model("base")
 VOICE_VOX_URL_HIGH_SPEED = "https://api.su-shiki.com/v2/voicevox/audio/"
 VOICE_VOX_URL_LOW_SPEED = "https://api.tts.quest/v1/voicevox/"
 VOICE_VOX_URL_LOCAL = "127.0.0.1"
@@ -35,6 +34,12 @@ pipeline_elapsed_time = 0
 TTS_pipeline_start_time = 0
 pipeline_timer = Timer()
 step_timer = Timer()
+model = None
+
+
+def initialize_model():
+    global model
+    model = whisper.load_model("base")
 
 
 def start_voicevox_server():
@@ -254,17 +259,28 @@ def start_STTS_pipeline():
         except:
             print("Failed to write to wav file.")
             print(f'audio.get_wav_data(): {audio.get_wav_data()}')
-        # send audio to whisper
-        global input_language_name
-        input_text = ''
 
         log_message("recording compelete, sending to whisper")
     elif (mic_mode == 'push to talk'):
         push_to_talk()
+
+    # send audio to whisper
     pipeline_timer.start()
     step_timer.start()
+    input_text = ''
     try:
-        input_text = model.transcribe(MIC_OUTPUT_FILENAME)['text']
+        global model
+        if (model == None):
+            initialize_model()
+        global input_language_name
+        print(input_language_name)
+        audio = whisper.load_audio(MIC_OUTPUT_FILENAME)
+        audio = whisper.pad_or_trim(audio)
+        mel = whisper.log_mel_spectrogram(audio).to(model.device)
+        options = whisper.DecodingOptions(
+            language=input_language_name.lower(), without_timestamps=True)
+        result = whisper.decode(model, mel, options)
+        input_text = result.text
     except sr.UnknownValueError:
         log_message("Whisper could not understand audio")
     except sr.RequestError as e:
