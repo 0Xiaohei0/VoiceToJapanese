@@ -12,8 +12,9 @@ import dict
 import translator
 from voicevox import vboxclient
 from timer import Timer
+import whisper
 
-
+model = whisper.load_model("base")
 VOICE_VOX_URL_HIGH_SPEED = "https://api.su-shiki.com/v2/voicevox/audio/"
 VOICE_VOX_URL_LOW_SPEED = "https://api.tts.quest/v1/voicevox/"
 VOICE_VOX_URL_LOCAL = "127.0.0.1"
@@ -26,7 +27,7 @@ speakersResponse = None
 vboxapp = None
 speaker_id = 1
 mic_mode = 'open mic'
-PUSH_TO_TALK_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
+MIC_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
 PUSH_TO_RECORD_KEY = '5'
 
 whisper_filter_list = ['you', 'thank you.', 'thanks for watching.']
@@ -217,7 +218,7 @@ def push_to_talk():
                 channels=CHANNELS
             )
 
-            audio_segment.export(PUSH_TO_TALK_OUTPUT_FILENAME, format="wav")
+            audio_segment.export(MIC_OUTPUT_FILENAME, format="wav")
             break
 
 
@@ -247,20 +248,23 @@ def start_STTS_pipeline():
         if not auto_recording:
             return
 
+        try:
+            with open(MIC_OUTPUT_FILENAME, "wb") as file:
+                file.write(audio.get_wav_data())
+        except:
+            print("Failed to write to wav file.")
+            print(f'audio.get_wav_data(): {audio.get_wav_data()}')
         # send audio to whisper
         global input_language_name
         input_text = ''
+
         log_message("recording compelete, sending to whisper")
     elif (mic_mode == 'push to talk'):
         push_to_talk()
-        r = sr.Recognizer()
-        with sr.AudioFile(PUSH_TO_TALK_OUTPUT_FILENAME) as source:
-            audio = r.record(source)
     pipeline_timer.start()
     step_timer.start()
     try:
-        input_text = r.recognize_whisper(
-            audio, language=input_language_name.lower())
+        input_text = model.transcribe(MIC_OUTPUT_FILENAME)['text']
     except sr.UnknownValueError:
         log_message("Whisper could not understand audio")
     except sr.RequestError as e:
