@@ -27,6 +27,8 @@ PUSH_TO_TALK_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
 PUSH_TO_RECORD_KEY = '5'
 
 whisper_filter_list = ['you', 'thank you.', 'thanks for watching.']
+pipeline_elapsed_time = 0
+TTS_pipeline_start_time = 0
 
 
 def start_voicevox_server():
@@ -105,6 +107,7 @@ def stop_record_auto():
 
 
 def sendTextToSyntheizer(text, speaker_id, api_key=''):
+    global pipeline_elapsed_time
     url = ''
     if (api_key == ''):
         print('No api key detected, sending request to low speed server.')
@@ -132,12 +135,21 @@ def sendTextToSyntheizer(text, speaker_id, api_key=''):
             return
         print(f"Downloading wav response from {wav_url}")
         wav_bytes = requests.get(wav_url).content
+
+        pipeline_elapsed_time += round(time.time() -
+                                       TTS_pipeline_start_time, 2)
+        log_message(
+            f"Total duration: ({round(pipeline_elapsed_time, 2)}s)")
         try:
             PlayAudio(wav_bytes)
         except:
             print("Failed to play wav.")
             print(wav_bytes)
     else:
+        pipeline_elapsed_time += round(time.time() -
+                                       TTS_pipeline_start_time, 2)
+        log_message(
+            f"Total duration: ({round(pipeline_elapsed_time, 2)}s)")
         PlayAudio(response.content)
 
 
@@ -151,8 +163,16 @@ def syntheize_audio(text, speaker_id):
 
 
 def play_audio_from_local_syntheizer(text, speaker_id):
+    syntheize_start_time = time.time()
     vboxapp.run(text=text, speaker=speaker_id,
                 filename="audioResponse.wav")  # textとfilenameは好きに変更できます
+    syntheize_duration = round(time.time() - syntheize_start_time, 2)
+    log_message(
+        f"Speech synthesized for text [{text}] ({round(syntheize_duration, 2)}s)")
+    global pipeline_elapsed_time
+    pipeline_elapsed_time += round(time.time() - TTS_pipeline_start_time, 2)
+    log_message(
+        f"Total duration: ({round(pipeline_elapsed_time, 2)}s)")
     voiceLine = AudioSegment.from_wav("audioResponse.wav")
     play(voiceLine)
 
@@ -213,6 +233,7 @@ def start_STTS_loop():
 
 
 def start_STTS_pipeline():
+    global pipeline_elapsed_time
     global mic_mode
     audio = None
     if (mic_mode == 'open mic'):
@@ -238,37 +259,47 @@ def start_STTS_pipeline():
         r = sr.Recognizer()
         with sr.AudioFile(PUSH_TO_TALK_OUTPUT_FILENAME) as source:
             audio = r.record(source)
+    STTS_pipeline_start_time = time.time()
     try:
+        whisper_start_time = time.time()
         input_text = r.recognize_whisper(
             audio, language=input_language_name.lower())
     except sr.UnknownValueError:
         log_message("Whisper could not understand audio")
     except sr.RequestError as e:
         log_message("Could not request results from Whisper")
+    whisper_duration = round(time.time() - whisper_start_time, 2)
     global whisper_filter_list
     if (input_text == ''):
         return
-    log_message(f'Input: {input_text}')
+    log_message(f'Input: {input_text} ({whisper_duration}s)')
+
     print(f'looking for {input_text.strip().lower()} in {whisper_filter_list}')
     if (input_text.strip().lower() in whisper_filter_list):
         log_message(f'Input {input_text} was filtered.')
         return
     with open("Input.txt", "w", encoding="utf-8") as file:
         file.write(input_text)
+    pipeline_elapsed_time += round(time.time() - STTS_pipeline_start_time, 2)
     start_TTS_pipeline(input_text)
 
 
 def start_TTS_pipeline(input_text):
     global voice_name
     global speaker_id
+    global TTS_pipeline_start_time
+    TTS_pipeline_start_time = time.time()
     inputLanguage = language_dict[input_language_name][:2]
     outputLanguage = 'ja'
     # print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
     translate = inputLanguage != outputLanguage
     if (translate):
+        translation_start_time = time.time()
         input_processed_text = translator.translate(
             input_text, inputLanguage, outputLanguage)
-        log_message(f'Translation: {input_processed_text}')
+        translation_duration = round(time.time() - translation_start_time, 2)
+        log_message(
+            f'Translation: {input_processed_text} ({translation_duration}s)')
     else:
         input_processed_text = input_text
 
@@ -283,6 +314,8 @@ def start_TTS_pipeline(input_text):
     last_input_language = inputLanguage
     global last_voice_param
     last_voice_param = speaker_id
+    global pipeline_elapsed_time
+    pipeline_elapsed_time = 0
 
 
 def playOriginal():
