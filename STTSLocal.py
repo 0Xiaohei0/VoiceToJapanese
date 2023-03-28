@@ -278,7 +278,7 @@ def start_STTS_pipeline():
         audio = whisper.pad_or_trim(audio)
         mel = whisper.log_mel_spectrogram(audio).to(model.device)
         options = whisper.DecodingOptions(
-            language=input_language_name.lower(), without_timestamps=True)
+            language=input_language_name.lower(), without_timestamps=True, fp16=False if model.device == 'cpu' else None)
         result = whisper.decode(model, mel, options)
         input_text = result.text
     except sr.UnknownValueError:
