@@ -148,12 +148,9 @@ def cloud_synthesize(text, speaker_id, api_key=''):
         wav_bytes = requests.get(wav_url).content
     else:
         wav_bytes = response.content
-    try:
-        with open(VOICE_OUTPUT_FILENAME, "wb") as file:
-            file.write(wav_bytes)
-    except:
-        print("Failed to write to wav file.")
-        print(f'wav_bytes: {wav_bytes}')
+
+    with open(VOICE_OUTPUT_FILENAME, "wb") as file:
+        file.write(wav_bytes)
 
 
 def syntheize_audio(text, speaker_id):
@@ -170,14 +167,9 @@ def local_synthesize(text, speaker_id):
         "POST", f"http://127.0.0.1:50021/audio_query?text={text}&speaker={speaker_id}")
     AudioResponse = requests.request(
         "POST", f"http://127.0.0.1:50021/synthesis?speaker={speaker_id}", data=VoiceTextResponse)
-    try:
-        with open(VOICE_OUTPUT_FILENAME, "wb") as file:
-            file.write(AudioResponse.content)
-    except:
-        print("Failed to write to wav file.")
-        print(f'wav_bytes: {AudioResponse.content}')
-    # vboxapp.run(text=text, speaker=speaker_id,
-    #             filename=VOICE_OUTPUT_FILENAME)
+
+    with open(VOICE_OUTPUT_FILENAME, "wb") as file:
+        file.write(AudioResponse.content)
 
 
 def PlayAudio():
@@ -253,12 +245,8 @@ def start_STTS_pipeline():
         if not auto_recording:
             return
 
-        try:
-            with open(MIC_OUTPUT_FILENAME, "wb") as file:
-                file.write(audio.get_wav_data())
-        except:
-            print("Failed to write to wav file.")
-            print(f'audio.get_wav_data(): {audio.get_wav_data()}')
+        with open(MIC_OUTPUT_FILENAME, "wb") as file:
+            file.write(audio.get_wav_data())
 
         log_message("recording compelete, sending to whisper")
     elif (mic_mode == 'push to talk'):
