@@ -45,8 +45,7 @@ def translate(text, from_code, to_code):
                     'translation', model='./models--staka--fugumt-en-ja/snapshots/2d6da1c7352386e12ddd46ce3d0bbb2310200fcc')
             return fugu_translator(text)[0]['translation_text']
         else:
-            print(
-                f"no avaliable model to translate from{from_code} to {to_code}")
+            print(f"No avaliable model to translate from{from_code} to {to_code}")
             return ''
     # DEEPL_TOKEN = os.environ.get("translation-service-api-token")
     # # Send text to translation service
