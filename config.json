@@ -1,7 +1,7 @@
 {
-  "use_deepl": true,
-  "deepl_api_key": "123",
-  "use_cloud_voice_vox": true,
-  "voice_vox_api_key": "222sqfsrrsf",
+  "use_deepl": false,
+  "deepl_api_key": "",
+  "use_cloud_voice_vox": false,
+  "voice_vox_api_key": "",
   "openai_api_key": ""
 }

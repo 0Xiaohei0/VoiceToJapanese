@@ -715,6 +715,19 @@ class SettingsPage(Page):
         self.voicevox_api_key_input.grid(
             row=4, column=1, padx=10, pady=10, sticky='W')
 
+        self.label_openai_api_key = customtkinter.CTkLabel(
+            master=self, text=f'Open-AI API key: ')
+        self.label_openai_api_key.grid(
+            row=5, column=0, padx=10, pady=10, sticky='W')
+        self.openai_api_key_var = customtkinter.StringVar(
+            self, chatbot.openai_api_key)
+        self.openai_api_key_var.trace_add(
+            'write', self.update_openai_api_key)
+        self.openai_api_key_input = customtkinter.CTkEntry(
+            master=self, textvariable=self.openai_api_key_var)
+        self.openai_api_key_input.grid(
+            row=5, column=1, padx=10, pady=10, sticky='W')
+
     def mic_mode_dropdown_callbakck(self, choice):
         STTS.mic_mode = choice
 
@@ -734,6 +747,10 @@ class SettingsPage(Page):
     def update_voicevox_api_key(self, str1, str2, str3):
         STTS.voice_vox_api_key = self.voicevox_api_key_var.get()
         STTS.save_config('voice_vox_api_key', STTS.voice_vox_api_key)
+
+    def update_openai_api_key(self, str1, str2, str3):
+        chatbot.openai_api_key = self.openai_api_key_var.get()
+        STTS.save_config('openai_api_key', chatbot.openai_api_key)
 
     def change_push_to_talk_key(self):
         thread = Thread(target=self.listen_for_key)
