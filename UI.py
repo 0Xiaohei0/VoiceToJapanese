@@ -11,6 +11,7 @@ import numpy as np
 import time
 import subLocal as SUB
 import translator
+import chatbot
 
 
 class Pages(Enum):
@@ -18,6 +19,7 @@ class Pages(Enum):
     TEXT_INPUT = 1
     SETTINGS = 2
     SUBTITLE = 3
+    CHAT = 4
 
 
 current_page = Pages.AUDIO_INPUT
@@ -65,6 +67,18 @@ class SidebarFrame(customtkinter.CTkFrame):
                                                    fg_color='grey'
                                                    )
         subtitles_button.pack(anchor="s")
+
+        chat_button = customtkinter.CTkButton(master=self,
+                                              width=120,
+                                              height=32,
+                                              border_width=0,
+                                              corner_radius=0,
+                                              text="Chat",
+                                              command=lambda: self.change_page(
+                                                  Pages.CHAT),
+                                              fg_color='grey'
+                                              )
+        chat_button.pack(anchor="s")
 
         button = customtkinter.CTkButton(master=self,
                                          width=120,
@@ -154,6 +168,100 @@ class ConsoleFrame(customtkinter.CTkFrame):
 
     def play_original_callback(self):
         thread = Thread(target=STTS.playOriginal())
+        thread.start()
+
+    def log_message_on_console(self, message_text):
+        # insert at line 0 character 0
+        self.textbox.configure(state="normal")
+        self.textbox.insert(customtkinter.INSERT, message_text+'\n')
+        self.textbox.configure(state="disabled")
+
+
+class ChatFrame(customtkinter.CTkFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.isRecording = False
+        self.thread = Thread(target=STTS.start_record_auto)
+        # add widgets onto the frame...
+        self.textbox = customtkinter.CTkTextbox(self, width=400, height=400)
+        self.textbox.grid(row=0, column=0, rowspan=4, columnspan=4)
+        # configure textbox to be read-only
+        self.textbox.configure(state="disabled")
+        chatbot.logging_eventhandlers.append(self.log_message_on_console)
+
+        self.user_input_var = customtkinter.StringVar(self, '')
+        self.voicevox_api_key_input = customtkinter.CTkEntry(
+            master=self, textvariable=self.user_input_var, width=300)
+        self.voicevox_api_key_input.grid(
+            row=4, column=0, padx=10, pady=10, sticky='W', columnspan=3)
+        self.send_button = customtkinter.CTkButton(master=self,
+                                                   width=32,
+                                                   height=32,
+                                                   border_width=0,
+                                                   corner_radius=8,
+                                                   text="send",
+                                                   command=self.send_user_input,
+                                                   fg_color='grey'
+                                                   )
+        self.send_button.grid(row=4, column=3, pady=10)
+        # self.recordButton = customtkinter.CTkButton(master=self,
+        #                                             width=120,
+        #                                             height=32,
+        #                                             border_width=0,
+        #                                             corner_radius=8,
+        #                                             text="Start Recording",
+        #                                             command=self.recordButton_callback,
+        #                                             fg_color='grey'
+        #                                             )
+        # self.recordButton.grid(row=3, column=0, pady=10)
+
+        # self.playOriginalButton = customtkinter.CTkButton(master=self,
+        #                                                   width=120,
+        #                                                   height=32,
+        #                                                   border_width=0,
+        #                                                   corner_radius=8,
+        #                                                   text="Play original",
+        #                                                   command=self.play_original_callback,
+        #                                                   fg_color='grey'
+        #                                                   )
+        # self.playOriginalButton.grid(row=3, column=1, pady=10)
+
+        # self.clearConsoleButton = customtkinter.CTkButton(master=self,
+        #                                                   width=32,
+        #                                                   height=32,
+        #                                                   border_width=0,
+        #                                                   corner_radius=8,
+        #                                                   text="X",
+        #                                                   command=self.clear_console,
+        #                                                   fg_color='grey'
+        #                                                   )
+        # self.clearConsoleButton.grid(row=3, column=2, padx=10, pady=10)
+
+    # def clear_console(self):
+    #     self.textbox.configure(state="normal")
+    #     self.textbox.delete('1.0', customtkinter.END)
+    #     self.textbox.configure(state="disabled")
+
+    # def recordButton_callback(self):
+    #     if (self.isRecording):
+    #         self.recordButton.configure(
+    #             text="Start Recording", fg_color='grey')
+    #         self.isRecording = False
+    #         STTS.stop_record_auto()
+    #     else:
+    #         self.recordButton.configure(
+    #             text="Stop Recording", fg_color='#fc7b5b')
+    #         self.isRecording = True
+    #         STTS.start_record_auto()
+    #     self.recordButton.grid(row=3, column=0, pady=10)
+
+    # def play_original_callback(self):
+    #     thread = Thread(target=STTS.playOriginal())
+    #     thread.start()
+    def send_user_input(self):
+        text = self.user_input_var.get()
+        self.user_input_var.set('')
+        thread = Thread(target=chatbot.send_user_input, args=[text,])
         thread.start()
 
     def log_message_on_console(self, message_text):
@@ -409,7 +517,7 @@ class SubtitleOverlay(customtkinter.CTkToplevel):
 
 
 class OptionsFrame(customtkinter.CTkFrame):
-    def __init__(self, master, **kwargs):
+    def __init__(self, master, enable_micmeter=True, **kwargs):
         super().__init__(master, **kwargs)
         self.speaker_names = STTS.get_speaker_names()
         self.default_speaker = self.speaker_names[0]
@@ -458,13 +566,15 @@ class OptionsFrame(customtkinter.CTkFrame):
                                                         variable=self.style_combobox_var)
         self.style_combobox.pack(padx=20, pady=0)
 
-        label_mic = customtkinter.CTkLabel(
-            master=self, text='Mic activity: ')
-        label_mic.pack(padx=20, pady=10)
-        self.progressbar = customtkinter.CTkProgressBar(master=self, width=100)
-        self.progressbar.pack(padx=20, pady=0)
-        thread = Thread(target=self.update_mic_meter)
-        thread.start()
+        if (enable_micmeter):
+            label_mic = customtkinter.CTkLabel(
+                master=self, text='Mic activity: ')
+            label_mic.pack(padx=20, pady=10)
+            self.progressbar = customtkinter.CTkProgressBar(
+                master=self, width=100)
+            self.progressbar.pack(padx=20, pady=0)
+            thread = Thread(target=self.update_mic_meter)
+            thread.start()
 
     def update_mic_meter(self):
         global audio_level
@@ -527,6 +637,17 @@ class SubtitlesPage(Page):
         subtitles_frame = SubtitlesFrame(
             master=self, width=500, corner_radius=8)
         subtitles_frame.pack(padx=0, pady=0)
+
+
+class ChatPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        chat_frame = ChatFrame(
+            master=self, width=500, corner_radius=8)
+        chat_frame.grid(row=0, column=1, padx=20, pady=20,
+                        sticky="nswe")
+        options = OptionsFrame(master=self, enable_micmeter=False)
+        options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
 
 
 class SettingsPage(Page):
@@ -634,6 +755,7 @@ class App(customtkinter.CTk):
         textInputPage = TextInputPage(self)
         settingsPage = SettingsPage(self)
         subtitlesPage = SubtitlesPage(self)
+        chatPage = ChatPage(self)
         container = customtkinter.CTkFrame(
             self, width=700, height=700, bg_color='#fafafa')
         container.grid(row=0, column=1, padx=20, pady=20, sticky="nswe")
@@ -641,6 +763,7 @@ class App(customtkinter.CTk):
         audioInputPage.place(in_=container, x=0, y=0)
         textInputPage.place(in_=container, x=0, y=0)
         subtitlesPage.place(in_=container, x=0, y=0)
+        chatPage.place(in_=container, x=0, y=0)
         settingsPage.place(in_=container, x=0, y=0)
 
         audioInputPage.show()
@@ -660,6 +783,9 @@ class App(customtkinter.CTk):
             elif (current_page == Pages.SETTINGS):
                 container.lift()
                 settingsPage.show()
+            elif (current_page == Pages.CHAT):
+                container.lift()
+                chatPage.show()
         pageChange_eventhandlers.append(showPage)
 
 
