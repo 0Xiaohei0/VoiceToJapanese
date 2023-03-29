@@ -13,6 +13,7 @@ import translator
 from voicevox import vboxclient
 from timer import Timer
 import whisper
+import chatbot
 
 VOICE_VOX_URL_HIGH_SPEED = "https://api.su-shiki.com/v2/voicevox/audio/"
 VOICE_VOX_URL_LOW_SPEED = "https://api.tts.quest/v1/voicevox/"
@@ -108,6 +109,14 @@ def start_record_auto():
     global auto_recording
     auto_recording = True
     thread = Thread(target=start_STTS_loop)
+    thread.start()
+
+
+def start_record_auto_chat():
+    log_message("Recording...")
+    global auto_recording
+    auto_recording = True
+    thread = Thread(target=start_STTS_loop_chat)
     thread.start()
 
 
@@ -225,7 +234,13 @@ def start_STTS_loop():
         start_STTS_pipeline()
 
 
-def start_STTS_pipeline():
+def start_STTS_loop_chat():
+    global auto_recording
+    while auto_recording:
+        start_STTS_pipeline(use_chatbot=True)
+
+
+def start_STTS_pipeline(use_chatbot=False):
     global pipeline_elapsed_time
     global step_timer
     global pipeline_timer
@@ -247,10 +262,9 @@ def start_STTS_pipeline():
 
         with open(MIC_OUTPUT_FILENAME, "wb") as file:
             file.write(audio.get_wav_data())
-
-        log_message("recording compelete, sending to whisper")
     elif (mic_mode == 'push to talk'):
         push_to_talk()
+    log_message("recording compelete, sending to whisper")
 
     # send audio to whisper
     pipeline_timer.start()
@@ -285,7 +299,11 @@ def start_STTS_pipeline():
     with open("Input.txt", "w", encoding="utf-8") as file:
         file.write(input_text)
     pipeline_elapsed_time += pipeline_timer.end()
-    start_TTS_pipeline(input_text)
+    if (use_chatbot):
+        log_message("recording compelete, sending to chatbot")
+        chatbot.send_user_input(input_text)
+    else:
+        start_TTS_pipeline(input_text)
 
 
 def start_TTS_pipeline(input_text):

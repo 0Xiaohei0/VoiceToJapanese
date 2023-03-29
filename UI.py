@@ -191,9 +191,9 @@ class ChatFrame(customtkinter.CTkFrame):
 
         self.user_input_var = customtkinter.StringVar(self, '')
         self.voicevox_api_key_input = customtkinter.CTkEntry(
-            master=self, textvariable=self.user_input_var, width=300)
+            master=self, textvariable=self.user_input_var, width=200)
         self.voicevox_api_key_input.grid(
-            row=4, column=0, padx=10, pady=10, sticky='W', columnspan=3)
+            row=4, column=0, padx=10, pady=10, sticky='W', columnspan=2)
         self.send_button = customtkinter.CTkButton(master=self,
                                                    width=32,
                                                    height=32,
@@ -203,17 +203,17 @@ class ChatFrame(customtkinter.CTkFrame):
                                                    command=self.send_user_input,
                                                    fg_color='grey'
                                                    )
-        self.send_button.grid(row=4, column=3, pady=10)
-        # self.recordButton = customtkinter.CTkButton(master=self,
-        #                                             width=120,
-        #                                             height=32,
-        #                                             border_width=0,
-        #                                             corner_radius=8,
-        #                                             text="Start Recording",
-        #                                             command=self.recordButton_callback,
-        #                                             fg_color='grey'
-        #                                             )
-        # self.recordButton.grid(row=3, column=0, pady=10)
+        self.send_button.grid(row=4, column=2, pady=10)
+        self.recordButton = customtkinter.CTkButton(master=self,
+                                                    width=120,
+                                                    height=32,
+                                                    border_width=0,
+                                                    corner_radius=8,
+                                                    text="Start Recording",
+                                                    command=self.recordButton_callback,
+                                                    fg_color='grey'
+                                                    )
+        self.recordButton.grid(row=4, column=3, pady=10)
 
         # self.playOriginalButton = customtkinter.CTkButton(master=self,
         #                                                   width=120,
@@ -242,18 +242,17 @@ class ChatFrame(customtkinter.CTkFrame):
     #     self.textbox.delete('1.0', customtkinter.END)
     #     self.textbox.configure(state="disabled")
 
-    # def recordButton_callback(self):
-    #     if (self.isRecording):
-    #         self.recordButton.configure(
-    #             text="Start Recording", fg_color='grey')
-    #         self.isRecording = False
-    #         STTS.stop_record_auto()
-    #     else:
-    #         self.recordButton.configure(
-    #             text="Stop Recording", fg_color='#fc7b5b')
-    #         self.isRecording = True
-    #         STTS.start_record_auto()
-    #     self.recordButton.grid(row=3, column=0, pady=10)
+    def recordButton_callback(self):
+        if (self.isRecording):
+            self.recordButton.configure(
+                text="Start Recording", fg_color='grey')
+            self.isRecording = False
+            STTS.stop_record_auto()
+        else:
+            self.recordButton.configure(
+                text="Stop Recording", fg_color='#fc7b5b')
+            self.isRecording = True
+            STTS.start_record_auto_chat()
 
     # def play_original_callback(self):
     #     thread = Thread(target=STTS.playOriginal())
@@ -517,7 +516,7 @@ class SubtitleOverlay(customtkinter.CTkToplevel):
 
 
 class OptionsFrame(customtkinter.CTkFrame):
-    def __init__(self, master, enable_micmeter=True, **kwargs):
+    def __init__(self, master, enable_micmeter=True,  enable_input_language=True, **kwargs):
         super().__init__(master, **kwargs)
         self.speaker_names = STTS.get_speaker_names()
         self.default_speaker = self.speaker_names[0]
@@ -527,19 +526,20 @@ class OptionsFrame(customtkinter.CTkFrame):
         self.selected_style = self.current_styles[0]
         STTS.speaker_id = self.selected_style['id']
 
-        self.default_input_anguage = "English"
-        self.input_anguage = ["English", "Japanese", "Chinese"]
+        if (enable_input_language):
+            self.default_input_anguage = "English"
+            self.input_anguage = ["English", "Japanese", "Chinese"]
 
-        label_Input = customtkinter.CTkLabel(
-            master=self, text='Input Language: ')
-        label_Input.pack(padx=20, pady=10)
-        input_language_combobox_var = customtkinter.StringVar(
-            value=self.default_input_anguage)
-        input_language_combobox = customtkinter.CTkComboBox(master=self,
-                                                            values=self.input_anguage,
-                                                            command=self.input_dropdown_callbakck,
-                                                            variable=input_language_combobox_var)
-        input_language_combobox.pack(padx=20, pady=0,)
+            label_Input = customtkinter.CTkLabel(
+                master=self, text='Input Language: ')
+            label_Input.pack(padx=20, pady=10)
+            input_language_combobox_var = customtkinter.StringVar(
+                value=self.default_input_anguage)
+            input_language_combobox = customtkinter.CTkComboBox(master=self,
+                                                                values=self.input_anguage,
+                                                                command=self.input_dropdown_callbakck,
+                                                                variable=input_language_combobox_var)
+            input_language_combobox.pack(padx=20, pady=0,)
 
         label_Input = customtkinter.CTkLabel(
             master=self, text='Speaker: ')
@@ -646,7 +646,7 @@ class ChatPage(Page):
             master=self, width=500, corner_radius=8)
         chat_frame.grid(row=0, column=1, padx=20, pady=20,
                         sticky="nswe")
-        options = OptionsFrame(master=self, enable_micmeter=False)
+        options = OptionsFrame(master=self, enable_input_language=False)
         options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
 
 
