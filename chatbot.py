@@ -3,6 +3,8 @@ import traceback
 import openai
 import STTSLocal as STTS
 
+openai_api_key = ''
+
 lore = ''
 try:
     with open('./lore.txt', 'r', encoding='utf-8') as file:
@@ -23,10 +25,12 @@ logging_eventhandlers = []
 def send_user_input(user_input):
     log_message(f'user: {user_input}')
     global message_log
-    api_key = os.getenv("OPENAI_API_KEY")
+    global openai_api_key
+    if (openai_api_key == ''):
+        openai_api_key = os.getenv("OPENAI_API_KEY")
 
-    openai.api_key = api_key
-    print(f"Sending: {user_input} with api key :{api_key}")
+    openai.api_key = openai_api_key
+    print(f"Sending: {user_input} with api key :{openai_api_key}")
     print(message_log)
     message_log.append({"role": "user", "content": user_input})
     response = None

@@ -687,23 +687,27 @@ class SettingsPage(Page):
         self.label_gpu_help.configure(state='disabled')
         self.label_gpu_help.grid(row=2, column=1, padx=10, pady=10, sticky='W')
 
-        self.use_deepl_var = customtkinter.BooleanVar(self, False)
+        self.use_deepl_var = customtkinter.BooleanVar(
+            self, translator.use_deepl)
         use_deepl_checkbox = customtkinter.CTkCheckBox(master=self, text="Use deepl (api key required)", command=self.set_use_deepl_var,
                                                        variable=self.use_deepl_var, onvalue=True, offvalue=False)
         use_deepl_checkbox.grid(row=3, column=0, padx=10, pady=10, sticky='W')
-        self.deepl_api_key_var = customtkinter.StringVar(self, '')
+        self.deepl_api_key_var = customtkinter.StringVar(
+            self, translator.deepl_api_key)
         self.deepl_api_key_var.trace_add('write', self.update_deepl_api_key)
         self.deepl_api_key_input = customtkinter.CTkEntry(
             master=self, textvariable=self.deepl_api_key_var)
         self.deepl_api_key_input.grid(
             row=3, column=1, padx=10, pady=10, sticky='W')
 
-        self.use_voicevox_var = customtkinter.BooleanVar(self, False)
+        self.use_voicevox_var = customtkinter.BooleanVar(
+            self, STTS.use_cloud_voice_vox)
         use_voicevox_checkbox = customtkinter.CTkCheckBox(master=self, text="Use voicevox on cloud (api key optional)", command=self.set_use_voicevox_var,
                                                           variable=self.use_voicevox_var, onvalue=True, offvalue=False)
         use_voicevox_checkbox.grid(
             row=4, column=0, padx=10, pady=10, sticky='W')
-        self.voicevox_api_key_var = customtkinter.StringVar(self, '')
+        self.voicevox_api_key_var = customtkinter.StringVar(
+            self, STTS.voice_vox_api_key)
         self.voicevox_api_key_var.trace_add(
             'write', self.update_voicevox_api_key)
         self.voicevox_api_key_input = customtkinter.CTkEntry(
@@ -716,16 +720,20 @@ class SettingsPage(Page):
 
     def set_use_deepl_var(self):
         translator.use_deepl = self.use_deepl_var.get()
+        STTS.save_config('use_deepl', translator.use_deepl)
 
     def update_deepl_api_key(self, str1, str2, str3):
         translator.deepl_api_key = self.deepl_api_key_var.get()
+        STTS.save_config('deepl_api_key', translator.deepl_api_key)
 
     def set_use_voicevox_var(self):
         print(f'use_cloud_voice_vox set to {self.use_voicevox_var.get()}')
         STTS.use_cloud_voice_vox = self.use_voicevox_var.get()
+        STTS.save_config('use_cloud_voice_vox', STTS.use_cloud_voice_vox)
 
     def update_voicevox_api_key(self, str1, str2, str3):
         STTS.voice_vox_api_key = self.voicevox_api_key_var.get()
+        STTS.save_config('voice_vox_api_key', STTS.voice_vox_api_key)
 
     def change_push_to_talk_key(self):
         thread = Thread(target=self.listen_for_key)
@@ -813,6 +821,9 @@ print("Initializing tts model...")
 STTS.initialize_model()
 print("Initializing translator...")
 translator.initialize()
+print("loading config... ")
+STTS.load_config()
+
 app = App()
 app.configure(background='#fafafa')
 app.mainloop()

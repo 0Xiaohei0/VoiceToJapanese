@@ -1,5 +1,6 @@
 from threading import Thread
 import time
+import traceback
 import keyboard
 import pyaudio
 import speech_recognition as sr
@@ -14,6 +15,42 @@ from voicevox import vboxclient
 from timer import Timer
 import whisper
 import chatbot
+import json
+
+
+def load_config():
+    try:
+        with open("config.json", "r") as json_file:
+            data = json.load(json_file)
+            print(data)
+
+            translator.deepl_api_key = data['deepl_api_key']
+            translator.use_deepl = data['use_deepl']
+            chatbot.openai_api_key = data['openai_api_key']
+            global voice_vox_api_key
+            voice_vox_api_key = data['voice_vox_api_key']
+            global use_cloud_voice_vox
+            use_cloud_voice_vox = data['use_cloud_voice_vox']
+
+    except:
+        print("Unable to load JSON file.")
+        print(traceback.format_exc())
+
+
+def save_config(key, value):
+    config = None
+    try:
+        with open("config.json", "r") as json_file:
+            config = json.load(json_file)
+            config[key] = value
+            print(f"config[{key}] = {value}")
+        with open("config.json", "w") as json_file:
+            json_object = json.dumps(config)
+            json_file.write(json_object)
+    except:
+        print("Unable to load JSON file.")
+        print(traceback.format_exc())
+
 
 VOICE_VOX_URL_HIGH_SPEED = "https://api.su-shiki.com/v2/voicevox/audio/"
 VOICE_VOX_URL_LOW_SPEED = "https://api.tts.quest/v1/voicevox/"
