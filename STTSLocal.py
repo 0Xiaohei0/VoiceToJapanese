@@ -11,11 +11,14 @@ import romajitable
 import dict
 import translator
 from voicevox import vboxclient
-
+from timer import Timer
+import whisper
 
 VOICE_VOX_URL_HIGH_SPEED = "https://api.su-shiki.com/v2/voicevox/audio/"
 VOICE_VOX_URL_LOW_SPEED = "https://api.tts.quest/v1/voicevox/"
 VOICE_VOX_URL_LOCAL = "127.0.0.1"
+
+VOICE_OUTPUT_FILENAME = "audioResponse.wav"
 
 use_cloud_voice_vox = False
 voice_vox_api_key = ''
@@ -23,10 +26,20 @@ speakersResponse = None
 vboxapp = None
 speaker_id = 1
 mic_mode = 'open mic'
-PUSH_TO_TALK_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
+MIC_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
 PUSH_TO_RECORD_KEY = '5'
 
 whisper_filter_list = ['you', 'thank you.', 'thanks for watching.']
+pipeline_elapsed_time = 0
+TTS_pipeline_start_time = 0
+pipeline_timer = Timer()
+step_timer = Timer()
+model = None
+
+
+def initialize_model():
+    global model
+    model = whisper.load_model("base")
 
 
 def start_voicevox_server():
@@ -104,7 +117,8 @@ def stop_record_auto():
     log_message("Recording Stopped")
 
 
-def sendTextToSyntheizer(text, speaker_id, api_key=''):
+def cloud_synthesize(text, speaker_id, api_key=''):
+    global pipeline_elapsed_time
     url = ''
     if (api_key == ''):
         print('No api key detected, sending request to low speed server.')
@@ -116,9 +130,9 @@ def sendTextToSyntheizer(text, speaker_id, api_key=''):
     print(f"Sending POST request to: {url}")
     response = requests.request(
         "POST", url)
-    log_message("Speech synthesized for text [{}]".format(text))
     print(f'response: {response}')
     # print(f'response.content: {response.content}')
+    wav_bytes = None
     if (api_key == ''):
         response_json = response.json()
         # print(response_json)
@@ -132,35 +146,34 @@ def sendTextToSyntheizer(text, speaker_id, api_key=''):
             return
         print(f"Downloading wav response from {wav_url}")
         wav_bytes = requests.get(wav_url).content
-        try:
-            PlayAudio(wav_bytes)
-        except:
-            print("Failed to play wav.")
-            print(wav_bytes)
     else:
-        PlayAudio(response.content)
+        wav_bytes = response.content
+
+    with open(VOICE_OUTPUT_FILENAME, "wb") as file:
+        file.write(wav_bytes)
 
 
 def syntheize_audio(text, speaker_id):
     global use_cloud_voice_vox
     global voice_vox_api_key
     if (use_cloud_voice_vox):
-        sendTextToSyntheizer(text, speaker_id, api_key=voice_vox_api_key)
+        cloud_synthesize(text, speaker_id, api_key=voice_vox_api_key)
     else:
-        play_audio_from_local_syntheizer(text, speaker_id)
+        local_synthesize(text, speaker_id)
 
 
-def play_audio_from_local_syntheizer(text, speaker_id):
-    vboxapp.run(text=text, speaker=speaker_id,
-                filename="audioResponse.wav")  # textとfilenameは好きに変更できます
-    voiceLine = AudioSegment.from_wav("audioResponse.wav")
-    play(voiceLine)
+def local_synthesize(text, speaker_id):
+    VoiceTextResponse = requests.request(
+        "POST", f"http://127.0.0.1:50021/audio_query?text={text}&speaker={speaker_id}")
+    AudioResponse = requests.request(
+        "POST", f"http://127.0.0.1:50021/synthesis?speaker={speaker_id}", data=VoiceTextResponse)
+
+    with open(VOICE_OUTPUT_FILENAME, "wb") as file:
+        file.write(AudioResponse.content)
 
 
-def PlayAudio(audioBytes):
-    with open("audioResponse.wav", "wb") as file:
-        file.write(audioBytes)
-    voiceLine = AudioSegment.from_wav("audioResponse.wav")
+def PlayAudio():
+    voiceLine = AudioSegment.from_wav(VOICE_OUTPUT_FILENAME)
     play(voiceLine)
 
 
@@ -202,7 +215,7 @@ def push_to_talk():
                 channels=CHANNELS
             )
 
-            audio_segment.export(PUSH_TO_TALK_OUTPUT_FILENAME, format="wav")
+            audio_segment.export(MIC_OUTPUT_FILENAME, format="wav")
             break
 
 
@@ -213,6 +226,9 @@ def start_STTS_loop():
 
 
 def start_STTS_pipeline():
+    global pipeline_elapsed_time
+    global step_timer
+    global pipeline_timer
     global mic_mode
     audio = None
     if (mic_mode == 'open mic'):
@@ -229,18 +245,30 @@ def start_STTS_pipeline():
         if not auto_recording:
             return
 
-        # send audio to whisper
-        global input_language_name
-        input_text = ''
+        with open(MIC_OUTPUT_FILENAME, "wb") as file:
+            file.write(audio.get_wav_data())
+
         log_message("recording compelete, sending to whisper")
     elif (mic_mode == 'push to talk'):
         push_to_talk()
-        r = sr.Recognizer()
-        with sr.AudioFile(PUSH_TO_TALK_OUTPUT_FILENAME) as source:
-            audio = r.record(source)
+
+    # send audio to whisper
+    pipeline_timer.start()
+    step_timer.start()
+    input_text = ''
     try:
-        input_text = r.recognize_whisper(
-            audio, language=input_language_name.lower())
+        global model
+        if (model == None):
+            initialize_model()
+        global input_language_name
+        print(input_language_name)
+        audio = whisper.load_audio(MIC_OUTPUT_FILENAME)
+        audio = whisper.pad_or_trim(audio)
+        mel = whisper.log_mel_spectrogram(audio).to(model.device)
+        options = whisper.DecodingOptions(
+            language=input_language_name.lower(), without_timestamps=True, fp16=False if model.device == 'cpu' else None)
+        result = whisper.decode(model, mel, options)
+        input_text = result.text
     except sr.UnknownValueError:
         log_message("Whisper could not understand audio")
     except sr.RequestError as e:
@@ -248,34 +276,46 @@ def start_STTS_pipeline():
     global whisper_filter_list
     if (input_text == ''):
         return
-    log_message(f'Input: {input_text}')
+    log_message(f'Input: {input_text} ({step_timer.end()}s)')
+
     print(f'looking for {input_text.strip().lower()} in {whisper_filter_list}')
     if (input_text.strip().lower() in whisper_filter_list):
         log_message(f'Input {input_text} was filtered.')
         return
     with open("Input.txt", "w", encoding="utf-8") as file:
         file.write(input_text)
+    pipeline_elapsed_time += pipeline_timer.end()
     start_TTS_pipeline(input_text)
 
 
 def start_TTS_pipeline(input_text):
     global voice_name
     global speaker_id
+    global pipeline_elapsed_time
+    pipeline_timer.start()
     inputLanguage = language_dict[input_language_name][:2]
     outputLanguage = 'ja'
     # print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
     translate = inputLanguage != outputLanguage
     if (translate):
+        step_timer.start()
         input_processed_text = translator.translate(
             input_text, inputLanguage, outputLanguage)
-        log_message(f'Translation: {input_processed_text}')
+        log_message(
+            f'Translation: {input_processed_text} ({step_timer.end()}s)')
     else:
         input_processed_text = input_text
 
     with open("translation.txt", "w", encoding="utf-8") as file:
         file.write(input_processed_text)
+    step_timer.start()
     syntheize_audio(
         input_processed_text, speaker_id)
+    log_message(
+        f"Speech synthesized for text [{input_processed_text}] ({step_timer.end()}s)")
+    log_message(
+        f'Total time: ({round(pipeline_elapsed_time + pipeline_timer.end(),2)}s)')
+    PlayAudio()
 
     global last_input_text
     last_input_text = input_text
@@ -283,6 +323,7 @@ def start_TTS_pipeline(input_text):
     last_input_language = inputLanguage
     global last_voice_param
     last_voice_param = speaker_id
+    pipeline_elapsed_time = 0
 
 
 def playOriginal():

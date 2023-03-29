@@ -8,3 +8,6 @@ test.py
 VOICEVOX/*
 *.wav
 models--staka--fugumt-en-ja/
+*.exe
+*.wav
+!lore.txt
