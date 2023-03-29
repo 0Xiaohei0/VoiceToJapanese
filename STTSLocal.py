@@ -1,6 +1,7 @@
 from threading import Thread
 import time
 import traceback
+import wave
 import keyboard
 import pyaudio
 import speech_recognition as sr
@@ -52,7 +53,8 @@ def save_config(key, value):
         print(traceback.format_exc())
 
 
-device_id = None
+input_device_id = None
+output_device_id = None
 
 VOICE_VOX_URL_HIGH_SPEED = "https://api.su-shiki.com/v2/voicevox/audio/"
 VOICE_VOX_URL_LOW_SPEED = "https://api.tts.quest/v1/voicevox/"
@@ -221,8 +223,37 @@ def local_synthesize(text, speaker_id):
 
 
 def PlayAudio():
-    voiceLine = AudioSegment.from_wav(VOICE_OUTPUT_FILENAME)
-    play(voiceLine)
+    # voiceLine = AudioSegment.from_wav(VOICE_OUTPUT_FILENAME)
+    # play(voiceLine)
+    # open the file for reading.
+    wf = wave.open(VOICE_OUTPUT_FILENAME, 'rb')
+
+    # create an audio object
+    p = pyaudio.PyAudio()
+
+    global output_device_id
+    # length of data to read.
+    chunk = 1024
+    # open stream based on the wave object which has been input.
+    stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+                    channels=wf.getnchannels(),
+                    rate=wf.getframerate(),
+                    output=True,
+                    output_device_index=output_device_id)
+
+    # read data (based on the chunk size)
+    data = wf.readframes(chunk)
+
+    # play stream (looping from beginning of file to the end)
+    while data:
+        # writing to the stream is what *actually* plays the sound.
+        stream.write(data)
+        data = wf.readframes(chunk)
+
+    # cleanup stuff.
+    wf.close()
+    stream.close()
+    p.terminate()
 
 
 def push_to_talk():
@@ -236,9 +267,10 @@ def push_to_talk():
             CHANNELS = 1
             RATE = 44100
             # Open audio stream
+            global input_device_id
             stream = audio.open(format=FORMAT, channels=CHANNELS,
                                 rate=RATE, input=True,
-                                frames_per_buffer=CHUNK)
+                                frames_per_buffer=CHUNK, input_device_index=input_device_id)
 
             # Initialize frames array to store audio data
             frames = []
@@ -289,7 +321,8 @@ def start_STTS_pipeline(use_chatbot=False):
         # record audio
         # obtain audio from the microphone
         r = sr.Recognizer()
-        with sr.Microphone() as source:
+        global input_device_id
+        with sr.Microphone(device_index=input_device_id) as source:
             # log_message("Adjusting for ambient noise...")
             # r.adjust_for_ambient_noise(source)
             log_message("Say something!")

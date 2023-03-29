@@ -295,13 +295,16 @@ class TextBoxFrame(customtkinter.CTkFrame):
 
 
 class AudiodeviceSelection(customtkinter.CTkFrame):
-    def __init__(self, set_command, get_command, master, **kwargs):
+    # set_command is called with updated device_id
+    # get_command should return the device_id for the mic meter
+    # device_type can be None, input or output for device filtering
+    def __init__(self, set_command, get_command, master, device_type=None, **kwargs):
         super().__init__(master, **kwargs)
         # Mic meter
         self.set_command = set_command
         self.get_command = get_command
         self.audio_level = 0.3
-
+        self.device_type = device_type
         # driver selection
         audio_driver_label = customtkinter.CTkLabel(
             master=self, text='Audio driver: ')
@@ -320,13 +323,18 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
 
         # device selection
         audio_input_label = customtkinter.CTkLabel(
-            master=self, text='Input device: ')
+            master=self, text=f'{device_type} device: ')
         audio_input_label.grid(row=1, column=0, padx=10, pady=10, sticky='W')
         self.audio_devices = self.get_audio_devices()
-        self.input_audio_devices = list(filter(
-            lambda device: device['max_input_channels'] > 0, self.audio_devices))
+        self.filtered_devices = self.audio_devices
+        if (self.device_type == 'input'):
+            self.filtered_devices = list(filter(
+                lambda device: device['max_input_channels'] > 0, self.audio_devices))
+        elif (self.device_type == 'output'):
+            self.filtered_devices = list(filter(
+                lambda device: device['max_output_channels'] > 0, self.audio_devices))
         self.input_audio_device_names = list(
-            map(lambda device: device['name'], self.input_audio_devices))
+            map(lambda device: device['name'], self.filtered_devices))
         self.input_audio_device_names.insert(0, 'Default')
         self.audio_input_combobox_var = customtkinter.StringVar(
             value='Default')
@@ -337,15 +345,18 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
         self.audio_input_combobox.grid(
             row=1, column=1, padx=10, pady=10, sticky='W')
 
-        label_mic = customtkinter.CTkLabel(
-            master=self, text='Mic activity: ')
-        label_mic.grid(row=2, column=0, padx=10, pady=10, sticky='W')
-        self.progressbar = customtkinter.CTkProgressBar(master=self, width=100)
-        self.progressbar.grid(row=3, column=0, padx=10, pady=10, sticky='W')
-        thread = Thread(target=self.update_mic_meter_loop)
-        thread.start()
-        self.listen_to_mic_thread = Thread(target=self.subtitle_listen_to_mic)
-        self.listen_to_mic_thread.start()
+        if (self.device_type == 'input'):
+            label_mic = customtkinter.CTkLabel(
+                master=self, text='Mic activity: ')
+            label_mic.grid(row=2, column=0, padx=10, pady=10, sticky='W')
+            self.progressbar = customtkinter.CTkProgressBar(
+                master=self, width=100)
+            self.progressbar.grid(
+                row=3, column=0, padx=10, pady=10, sticky='W')
+            thread = Thread(target=self.update_mic_meter_loop)
+            thread.start()
+            self.listen_to_mic_thread = Thread(target=self.listen_to_mic)
+            self.listen_to_mic_thread.start()
 
     def update_mic_meter_loop(self):
         while True:
@@ -355,7 +366,7 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
         self.progressbar.set(self.audio_level)
         time.sleep(0.01)
 
-    def subtitle_listen_to_mic(self):
+    def listen_to_mic(self):
         self._subtitle_mic_stream = sd.InputStream(
             callback=self.update_sound, device=self.get_command())
         with self._subtitle_mic_stream:
@@ -368,14 +379,16 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
         else:
             print(choice)
             device = next(
-                device for device in self.input_audio_devices if device['name'] == choice)
+                device for device in self.filtered_devices if device['name'] == choice)
             device_id = device['index']
             print(device)
-        print(f'Setting Input audio device id to: {device_id}')
+        print(f'Setting {self.device_type} audio device id to: {device_id}')
         self.set_command(device_id)
-        self._subtitle_mic_stream.stop()
-        self.listen_to_mic_thread = Thread(target=self.subtitle_listen_to_mic)
-        self.listen_to_mic_thread.start()
+        if (self.device_type == 'input'):
+            print(f"restarted micmeter with device id: {device_id}")
+            self._subtitle_mic_stream.stop()
+            self.listen_to_mic_thread = Thread(target=self.listen_to_mic)
+            self.listen_to_mic_thread.start()
 
     def audio_driver_dropdown_callback(self, choice):
         print(choice)
@@ -385,10 +398,15 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
                 driver_idx = idx
         print(f'Selected driver with idx: {driver_idx}')
         self.audio_devices = self.get_audio_devices(hostapi=driver_idx)
-        self.input_audio_devices = list(filter(
-            lambda device: device['max_input_channels'] > 0, self.audio_devices))
+        self.filtered_devices = self.audio_devices
+        if (self.device_type == 'input'):
+            self.filtered_devices = list(filter(
+                lambda device: device['max_input_channels'] > 0, self.audio_devices))
+        elif (self.device_type == 'output'):
+            self.filtered_devices = list(filter(
+                lambda device: device['max_output_channels'] > 0, self.audio_devices))
         self.input_audio_device_names = list(
-            map(lambda device: device['name'], self.input_audio_devices))
+            map(lambda device: device['name'], self.filtered_devices))
         self.input_audio_device_names.insert(0, 'Default')
         self.audio_input_combobox_var = customtkinter.StringVar(
             value='Default')
@@ -396,11 +414,13 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
                                             variable=self.audio_input_combobox_var)
         print(self.input_audio_device_names)
         device_id = None
-        print(f'Setting Input audio device id to: {device_id}')
+        print(f'Setting {self.device_type} audio device id to: {device_id}')
         self.set_command(device_id)
-        self._subtitle_mic_stream.stop()
-        self.listen_to_mic_thread = Thread(target=self.subtitle_listen_to_mic)
-        self.listen_to_mic_thread.start()
+        if (self.device_type == 'input'):
+            print(f"restarted micmeter with device id: {device_id}")
+            self._subtitle_mic_stream.stop()
+            self.listen_to_mic_thread = Thread(target=self.listen_to_mic)
+            self.listen_to_mic_thread.start()
 
     def get_audio_drivers(self):
         hostapis = sd.query_hostapis()
@@ -447,7 +467,7 @@ class SubtitlesFrame(customtkinter.CTkFrame):
             row=3, column=1, padx=10, pady=10, sticky='W')
 
         self.audio_device_selection = AudiodeviceSelection(
-            master=self, set_command=self.device_index_update_callback, get_command=self.device_index_get_callback)
+            master=self, set_command=self.device_index_update_callback, get_command=self.device_index_get_callback, device_type='input')
         self.audio_device_selection.grid(
             row=4, column=0, padx=10, pady=10, sticky='W', rowspan=1, columnspan=2)
 
@@ -681,21 +701,25 @@ class SettingsPage(Page):
         self.change_mic_key_Button.grid(
             row=1, column=1, padx=10, pady=10, sticky='W')
 
-        self.label_gpu = customtkinter.CTkLabel(
-            master=self, text=f'NVIDIA CUDA 11.7 active: {SUB.check_gpu_status()}')
-        self.label_gpu.grid(row=2, column=0, padx=10, pady=10, sticky='W')
-        self.label_gpu_help = customtkinter.CTkTextbox(
-            master=self, width=300, height=100)
-        self.label_gpu_help.insert(
-            "0.0", ('If you have a compatible NVIDIA GPU, you can download CUDA Toolkit to utilize your GPU: '
-                    'https://developer.nvidia.com/cuda-11-7-1-download-archive?target_os=Windows&target_arch=x86_64'))
-        self.label_gpu_help.configure(state='disabled')
-        self.label_gpu_help.grid(row=2, column=1, padx=10, pady=10, sticky='W')
+        # self.label_gpu = customtkinter.CTkLabel(
+        #     master=self, text=f'NVIDIA CUDA 11.7 active: {SUB.check_gpu_status()}')
+        # self.label_gpu.grid(row=2, column=0, padx=10, pady=10, sticky='W')
+        # self.label_gpu_help = customtkinter.CTkTextbox(
+        #     master=self, width=300, height=100)
+        # self.label_gpu_help.insert(
+        #     "0.0", ('If you have a compatible NVIDIA GPU, you can download CUDA Toolkit to utilize your GPU: '
+        #             'https://developer.nvidia.com/cuda-11-7-1-download-archive?target_os=Windows&target_arch=x86_64'))
+        # self.label_gpu_help.configure(state='disabled')
+        # self.label_gpu_help.grid(row=2, column=1, padx=10, pady=10, sticky='W')
 
         self.audio_device_selection = AudiodeviceSelection(
-            master=self, set_command=self.device_index_update_callback, get_command=self.device_index_get_callback)
+            master=self, set_command=self.input_device_index_update_callback, get_command=self.input_device_index_get_callback, device_type='input')
         self.audio_device_selection.grid(
-            row=3, column=0, padx=10, pady=10, sticky='W', rowspan=1, columnspan=2)
+            row=3, column=0, padx=10, pady=10, sticky='NW', rowspan=1, columnspan=2)
+        self.audio_device_selection = AudiodeviceSelection(
+            master=self, set_command=self.output_device_index_update_callback, get_command=self.output_device_index_get_callback, device_type='output')
+        self.audio_device_selection.grid(
+            row=3, column=1, padx=10, pady=10, sticky='NW', rowspan=1, columnspan=3)
 
         self.use_deepl_var = customtkinter.BooleanVar(
             self, translator.use_deepl)
@@ -726,7 +750,7 @@ class SettingsPage(Page):
             row=5, column=1, padx=10, pady=10, sticky='W')
 
         self.label_openai_api_key = customtkinter.CTkLabel(
-            master=self, text=f'Open-AI API key(required): ')
+            master=self, text=f'Open-AI API key(required to chat): ')
         self.label_openai_api_key.grid(
             row=6, column=0, padx=10, pady=10, sticky='W')
         self.openai_api_key_var = customtkinter.StringVar(
@@ -738,11 +762,17 @@ class SettingsPage(Page):
         self.openai_api_key_input.grid(
             row=6, column=1, padx=10, pady=10, sticky='W')
 
-    def device_index_update_callback(self, value):
-        STTS.device_id = value
+    def input_device_index_update_callback(self, value):
+        STTS.input_device_id = value
 
-    def device_index_get_callback(self):
-        return STTS.device_id
+    def input_device_index_get_callback(self):
+        return STTS.input_device_id
+
+    def output_device_index_update_callback(self, value):
+        STTS.output_device_id = value
+
+    def output_device_index_get_callback(self):
+        return STTS.output_device_id
 
     def mic_mode_dropdown_callbakck(self, choice):
         STTS.mic_mode = choice
