@@ -52,6 +52,8 @@ def save_config(key, value):
         print(traceback.format_exc())
 
 
+device_id = None
+
 VOICE_VOX_URL_HIGH_SPEED = "https://api.su-shiki.com/v2/voicevox/audio/"
 VOICE_VOX_URL_LOW_SPEED = "https://api.tts.quest/v1/voicevox/"
 VOICE_VOX_URL_LOCAL = "127.0.0.1"
