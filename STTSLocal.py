@@ -1,5 +1,7 @@
 from threading import Thread
 import time
+import traceback
+import wave
 import keyboard
 import pyaudio
 import speech_recognition as sr
@@ -13,6 +15,83 @@ import translator
 from voicevox import vboxclient
 from timer import Timer
 import whisper
+import chatbot
+import json
+import streamChat
+
+
+def load_config():
+    try:
+        with open("config.json", "r") as json_file:
+            data = json.load(json_file)
+            print(data)
+
+            translator.deepl_api_key = data['deepl_api_key']
+            translator.use_deepl = data['use_deepl']
+            chatbot.openai_api_key = data['openai_api_key']
+            global voice_vox_api_key
+            voice_vox_api_key = data['voice_vox_api_key']
+            global use_cloud_voice_vox
+            use_cloud_voice_vox = data['use_cloud_voice_vox']
+            streamChat.twitch_access_token = data['twitch_access_token']
+            streamChat.twitch_channel_name = data['twitch_channel_name']
+            streamChat.youtube_video_id = data['youtube_video_id']
+
+    except:
+        print("Unable to load JSON file.")
+        print(traceback.format_exc())
+
+
+def save_config(key, value):
+    config = None
+    try:
+        with open("config.json", "r") as json_file:
+            config = json.load(json_file)
+            config[key] = value
+            print(f"config[{key}] = {value}")
+        with open("config.json", "w") as json_file:
+            json_object = json.dumps(config)
+            json_file.write(json_object)
+    except:
+        print("Unable to load JSON file.")
+        print(traceback.format_exc())
+
+
+def load_settings():
+    try:
+        with open("settings.json", "r") as json_file:
+            settings = json.load(json_file)
+            print(settings)
+            global input_device_id
+            input_device_id = settings['input_device_id']
+            global output_device_id
+            output_device_id = settings['output_device_id']
+            global mic_mode
+            mic_mode = settings['mic_mode']
+
+    except:
+        print("Unable to load Settings file.")
+        print(traceback.format_exc())
+
+
+def save_settings(key, value):
+    settings = None
+    try:
+        with open("settings.json", "r") as json_file:
+            settings = json.load(json_file)
+            settings[key] = value
+            print(f"setting[{key}] = {value}")
+        with open("settings.json", "w") as json_file:
+            json_object = json.dumps(settings)
+            json_file.write(json_object)
+    except:
+        print("Unable to load JSON file.")
+        print(traceback.format_exc())
+
+
+settings = None
+input_device_id = None
+output_device_id = None
 
 VOICE_VOX_URL_HIGH_SPEED = "https://api.su-shiki.com/v2/voicevox/audio/"
 VOICE_VOX_URL_LOW_SPEED = "https://api.tts.quest/v1/voicevox/"
@@ -111,6 +190,14 @@ def start_record_auto():
     thread.start()
 
 
+def start_record_auto_chat():
+    log_message("Recording...")
+    global auto_recording
+    auto_recording = True
+    thread = Thread(target=start_STTS_loop_chat)
+    thread.start()
+
+
 def stop_record_auto():
     global auto_recording
     auto_recording = False
@@ -173,8 +260,37 @@ def local_synthesize(text, speaker_id):
 
 
 def PlayAudio():
-    voiceLine = AudioSegment.from_wav(VOICE_OUTPUT_FILENAME)
-    play(voiceLine)
+    # voiceLine = AudioSegment.from_wav(VOICE_OUTPUT_FILENAME)
+    # play(voiceLine)
+    # open the file for reading.
+    wf = wave.open(VOICE_OUTPUT_FILENAME, 'rb')
+
+    # create an audio object
+    p = pyaudio.PyAudio()
+
+    global output_device_id
+    # length of data to read.
+    chunk = 1024
+    # open stream based on the wave object which has been input.
+    stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+                    channels=wf.getnchannels(),
+                    rate=wf.getframerate(),
+                    output=True,
+                    output_device_index=output_device_id)
+
+    # read data (based on the chunk size)
+    data = wf.readframes(chunk)
+
+    # play stream (looping from beginning of file to the end)
+    while data:
+        # writing to the stream is what *actually* plays the sound.
+        stream.write(data)
+        data = wf.readframes(chunk)
+
+    # cleanup stuff.
+    wf.close()
+    stream.close()
+    p.terminate()
 
 
 def push_to_talk():
@@ -188,9 +304,10 @@ def push_to_talk():
             CHANNELS = 1
             RATE = 44100
             # Open audio stream
+            global input_device_id
             stream = audio.open(format=FORMAT, channels=CHANNELS,
                                 rate=RATE, input=True,
-                                frames_per_buffer=CHUNK)
+                                frames_per_buffer=CHUNK, input_device_index=input_device_id)
 
             # Initialize frames array to store audio data
             frames = []
@@ -225,7 +342,13 @@ def start_STTS_loop():
         start_STTS_pipeline()
 
 
-def start_STTS_pipeline():
+def start_STTS_loop_chat():
+    global auto_recording
+    while auto_recording:
+        start_STTS_pipeline(use_chatbot=True)
+
+
+def start_STTS_pipeline(use_chatbot=False):
     global pipeline_elapsed_time
     global step_timer
     global pipeline_timer
@@ -235,7 +358,8 @@ def start_STTS_pipeline():
         # record audio
         # obtain audio from the microphone
         r = sr.Recognizer()
-        with sr.Microphone() as source:
+        global input_device_id
+        with sr.Microphone(device_index=input_device_id) as source:
             # log_message("Adjusting for ambient noise...")
             # r.adjust_for_ambient_noise(source)
             log_message("Say something!")
@@ -247,10 +371,9 @@ def start_STTS_pipeline():
 
         with open(MIC_OUTPUT_FILENAME, "wb") as file:
             file.write(audio.get_wav_data())
-
-        log_message("recording compelete, sending to whisper")
     elif (mic_mode == 'push to talk'):
         push_to_talk()
+    log_message("recording compelete, sending to whisper")
 
     # send audio to whisper
     pipeline_timer.start()
@@ -285,7 +408,11 @@ def start_STTS_pipeline():
     with open("Input.txt", "w", encoding="utf-8") as file:
         file.write(input_text)
     pipeline_elapsed_time += pipeline_timer.end()
-    start_TTS_pipeline(input_text)
+    if (use_chatbot):
+        log_message("recording compelete, sending to chatbot")
+        chatbot.send_user_input(input_text)
+    else:
+        start_TTS_pipeline(input_text)
 
 
 def start_TTS_pipeline(input_text):
@@ -306,13 +433,19 @@ def start_TTS_pipeline(input_text):
     else:
         input_processed_text = input_text
 
+    # filter special characters
+    filtered_text = ''
+    for char in input_processed_text:
+        if char != "*":
+            filtered_text += char
+
     with open("translation.txt", "w", encoding="utf-8") as file:
-        file.write(input_processed_text)
+        file.write(filtered_text)
     step_timer.start()
     syntheize_audio(
-        input_processed_text, speaker_id)
+        filtered_text, speaker_id)
     log_message(
-        f"Speech synthesized for text [{input_processed_text}] ({step_timer.end()}s)")
+        f"Speech synthesized for text [{filtered_text}] ({step_timer.end()}s)")
     log_message(
         f'Total time: ({round(pipeline_elapsed_time + pipeline_timer.end(),2)}s)')
     PlayAudio()
