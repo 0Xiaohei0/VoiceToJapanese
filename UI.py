@@ -471,13 +471,13 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
             self.restart_mic_meter()
 
     def get_audio_drivers(self):
-        hostapis = sd.query_hostapis()
-        # print(hostapis)
+        global hostapis
         return hostapis
 
     def get_audio_devices(self, hostapi=0):
+        global audio_devices
         devices = list(filter(
-            lambda device: device['hostapi'] == hostapi, sd.query_devices()))
+            lambda device: device['hostapi'] == hostapi, audio_devices))
         # print(devices)
         return devices
 
@@ -1074,6 +1074,15 @@ def listen_to_mic():
         sd.sleep(10000000)
 
 
+def initialize_audio_devices():
+    global hostapis
+    hostapis = sd.query_hostapis()
+    global audio_devices
+    audio_devices = sd.query_devices()
+
+
+hostapis = None
+audio_devices = None
 thread = Thread(target=listen_to_mic)
 thread.start()
 
@@ -1083,6 +1092,8 @@ print("Initializing tts model...")
 STTS.initialize_model()
 print("Initializing translator...")
 translator.initialize()
+print("loading Audio devices: ")
+initialize_audio_devices()
 print("loading config... ")
 STTS.load_config()
 print("loading settings... ")
