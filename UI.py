@@ -26,6 +26,8 @@ current_page = Pages.AUDIO_INPUT
 pageChange_eventhandlers = []
 audio_level = 0.3
 
+mic_meters = []
+
 
 class SidebarFrame(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -298,7 +300,7 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
     # set_command is called with updated device_id
     # get_command should return the device_id for the mic meter
     # device_type can be None, input or output for device filtering
-    def __init__(self, set_command, get_command, master, device_type=None, **kwargs):
+    def __init__(self, set_command, get_command, master, device_type=None, show_device_selection=True, show_driver_selection=True, show_mic_meter=True, **kwargs):
         super().__init__(master, **kwargs)
         # Mic meter
         self.set_command = set_command
@@ -306,46 +308,50 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
         self.audio_level = 0.3
         self.device_type = device_type
         # driver selection
-        audio_driver_label = customtkinter.CTkLabel(
-            master=self, text='Audio driver: ')
-        audio_driver_label.grid(row=0, column=0, padx=10, pady=10, sticky='W')
-        self.audio_drivers = self.get_audio_drivers()
-        self.audio_driver_names = list(
-            map(lambda driver: driver['name'], self.audio_drivers))
-        self.audio_input_combobox_var = customtkinter.StringVar(
-            value=self.audio_driver_names[0])
-        self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
-                                                              values=self.audio_driver_names,
-                                                              command=self.audio_driver_dropdown_callback,
-                                                              variable=self.audio_input_combobox_var)
-        self.audio_input_combobox.grid(
-            row=0, column=1, padx=10, pady=10, sticky='W')
+        if (show_driver_selection):
+            audio_driver_label = customtkinter.CTkLabel(
+                master=self, text='Audio driver: ')
+            audio_driver_label.grid(
+                row=0, column=0, padx=10, pady=10, sticky='W')
+            self.audio_drivers = self.get_audio_drivers()
+            self.audio_driver_names = list(
+                map(lambda driver: driver['name'], self.audio_drivers))
+            self.audio_input_combobox_var = customtkinter.StringVar(
+                value=self.audio_driver_names[0])
+            self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
+                                                                  values=self.audio_driver_names,
+                                                                  command=self.audio_driver_dropdown_callback,
+                                                                  variable=self.audio_input_combobox_var)
+            self.audio_input_combobox.grid(
+                row=0, column=1, padx=10, pady=10, sticky='W')
 
-        # device selection
-        audio_input_label = customtkinter.CTkLabel(
-            master=self, text=f'{device_type} device: ')
-        audio_input_label.grid(row=1, column=0, padx=10, pady=10, sticky='W')
-        self.audio_devices = self.get_audio_devices()
-        self.filtered_devices = self.audio_devices
-        if (self.device_type == 'input'):
-            self.filtered_devices = list(filter(
-                lambda device: device['max_input_channels'] > 0, self.audio_devices))
-        elif (self.device_type == 'output'):
-            self.filtered_devices = list(filter(
-                lambda device: device['max_output_channels'] > 0, self.audio_devices))
-        self.input_audio_device_names = list(
-            map(lambda device: device['name'], self.filtered_devices))
-        self.input_audio_device_names.insert(0, 'Default')
-        self.audio_input_combobox_var = customtkinter.StringVar(
-            value='Default')
-        self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
-                                                              values=self.input_audio_device_names,
-                                                              command=self.audio_input_dropdown_callbakck,
-                                                              variable=self.audio_input_combobox_var)
-        self.audio_input_combobox.grid(
-            row=1, column=1, padx=10, pady=10, sticky='W')
+        if (show_device_selection):
+            # device selection
+            audio_input_label = customtkinter.CTkLabel(
+                master=self, text=f'{device_type} device: ')
+            audio_input_label.grid(
+                row=1, column=0, padx=10, pady=10, sticky='W')
+            self.audio_devices = self.get_audio_devices()
+            self.filtered_devices = self.audio_devices
+            if (self.device_type == 'input'):
+                self.filtered_devices = list(filter(
+                    lambda device: device['max_input_channels'] > 0, self.audio_devices))
+            elif (self.device_type == 'output'):
+                self.filtered_devices = list(filter(
+                    lambda device: device['max_output_channels'] > 0, self.audio_devices))
+            self.input_audio_device_names = list(
+                map(lambda device: device['name'], self.filtered_devices))
+            self.input_audio_device_names.insert(0, 'Default')
+            self.audio_input_combobox_var = customtkinter.StringVar(
+                value='Default')
+            self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
+                                                                  values=self.input_audio_device_names,
+                                                                  command=self.audio_input_dropdown_callbakck,
+                                                                  variable=self.audio_input_combobox_var)
+            self.audio_input_combobox.grid(
+                row=1, column=1, padx=10, pady=10, sticky='W')
 
-        if (self.device_type == 'input'):
+        if (self.device_type == 'input' and show_mic_meter):
             label_mic = customtkinter.CTkLabel(
                 master=self, text='Mic activity: ')
             label_mic.grid(row=2, column=0, padx=10, pady=10, sticky='W')
@@ -357,6 +363,8 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
             thread.start()
             self.listen_to_mic_thread = Thread(target=self.listen_to_mic)
             self.listen_to_mic_thread.start()
+            global mic_meters
+            mic_meters.append(self)
 
     def update_mic_meter_loop(self):
         while True:
@@ -386,9 +394,16 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
         self.set_command(device_id)
         if (self.device_type == 'input'):
             print(f"restarted micmeter with device id: {device_id}")
-            self._subtitle_mic_stream.stop()
-            self.listen_to_mic_thread = Thread(target=self.listen_to_mic)
-            self.listen_to_mic_thread.start()
+            self.restart_mic_meter()
+
+    def restart_mic_meter(self):
+        global mic_meters
+        for mic in mic_meters:
+            print(mic.listen_to_mic_thread)
+            mic._subtitle_mic_stream.stop()
+            mic.listen_to_mic_thread.join()
+            mic.listen_to_mic_thread = Thread(target=self.listen_to_mic)
+            mic.listen_to_mic_thread.start()
 
     def audio_driver_dropdown_callback(self, choice):
         print(choice)
@@ -418,9 +433,7 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
         self.set_command(device_id)
         if (self.device_type == 'input'):
             print(f"restarted micmeter with device id: {device_id}")
-            self._subtitle_mic_stream.stop()
-            self.listen_to_mic_thread = Thread(target=self.listen_to_mic)
-            self.listen_to_mic_thread.start()
+            self.restart_mic_meter()
 
     def get_audio_drivers(self):
         hostapis = sd.query_hostapis()
@@ -606,6 +619,16 @@ class OptionsFrame(customtkinter.CTkFrame):
                                                         command=self.style_dropdown_callbakck,
                                                         variable=self.style_combobox_var)
         self.style_combobox.pack(padx=20, pady=0)
+
+        self.audio_device_selection = AudiodeviceSelection(
+            master=self, set_command=self.input_device_index_update_callback, get_command=self.input_device_index_get_callback, device_type='input', show_driver_selection=False, show_device_selection=False)
+        self.audio_device_selection.pack(padx=20, pady=10)
+
+    def input_device_index_update_callback(self, value):
+        STTS.input_device_id = value
+
+    def input_device_index_get_callback(self):
+        return STTS.input_device_id
 
     def input_dropdown_callbakck(self, choice):
         STTS.change_input_language(choice)
