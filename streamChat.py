@@ -1,3 +1,4 @@
+import asyncio
 import traceback
 import pytchat
 import chatbot
@@ -41,7 +42,7 @@ def read_chat_loop(chat):
     while read_chat_youtube_thread_running and chat.is_alive():
         for c in chat.get().sync_items():
             log_message(f"{c.datetime} [{c.author.name}]- {c.message}")
-            # response = chatbot.send_user_input(c.message)
+            chatbot.send_user_input(c.message)
             # print(response)
             time.sleep(1)
     log_message("Chat fetching ended")
@@ -73,6 +74,7 @@ class Bot(commands.Bot):
             return
 
         # Print the contents of our message to console...
+        print(message)
         log_message(message.content)
         chatbot.send_user_input(message.content)
 
@@ -87,6 +89,7 @@ class Bot(commands.Bot):
 
 
 def read_chat_twitch():
+    log_message("startinging chat fetching...")
     global twitchbot
     global read_chat_twitch_thread_running, read_chat_twitch_thread
     global twitch_access_token, twitch_channel_name
@@ -97,19 +100,12 @@ def read_chat_twitch():
 
 
 def runbot():
+    log_message("Chat fetching started")
     twitchbot.run()
 
 
 def stop_read_chat_twitch():
-    global twitchbot
-    global read_chat_twitch_thread_running, read_chat_twitch_thread
-    if not read_chat_twitch_thread_running or read_chat_twitch_thread is None:
-        print("Process is not running.")
-        return
-    twitchbot.close()
-    read_chat_twitch_thread.join
-    read_chat_twitch_thread_running = False
-    print("Process stopped.")
+    log_message("Twitch fetching can only be stopped by closing the program.")
 
 
 def log_message(message_text):

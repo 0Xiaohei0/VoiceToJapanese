@@ -691,15 +691,15 @@ class StreamFrame(customtkinter.CTkFrame):
         super().__init__(master, **kwargs)
         if (stream_type == 'youtube'):
             label_youtube_video_id = customtkinter.CTkLabel(
-                master=self, text='Youtube video id (example: Sdx3kCr8DvQ)')
-            label_youtube_video_id.pack(padx=20, pady=10)
+                master=self, text='Youtube video id \n (example: Sdx3kCr8DvQ)')
+            label_youtube_video_id.pack(padx=20, pady=5)
             self.youtube_video_id_var = customtkinter.StringVar(
                 self, streamChat.youtube_video_id)
             self.youtube_video_id_var.trace_add(
                 'write', self.update_youtube_video_id)
             self.youtube_stream_id_input = customtkinter.CTkEntry(
                 master=self, textvariable=self.youtube_video_id_var)
-            self.youtube_stream_id_input.pack(padx=20, pady=10)
+            self.youtube_stream_id_input.pack(padx=20, pady=5)
 
             self.toggle_start_Button = customtkinter.CTkButton(master=self,
                                                                text="Start fetching chat",
@@ -707,36 +707,36 @@ class StreamFrame(customtkinter.CTkFrame):
                                                                fg_color='grey'
                                                                )
             self.toggle_start_Button.pack(padx=20, pady=10)
-        # elif (stream_type == 'twitch'):
-        #     self.twitch_access_token = ''
-        #     label_twitch_access_token = customtkinter.CTkLabel(
-        #         master=self, text='Twitch access token')
-        #     label_twitch_access_token.pack(padx=20, pady=10)
-        #     self.twitch_access_token_var = customtkinter.StringVar(
-        #         self, self.youtube_stream_id)
-        #     self.youtube_stream_id_var.trace_add(
-        #         'write', self.update_youtube_video_id)
-        #     self.youtube_stream_id_input = customtkinter.CTkEntry(
-        #         master=self, textvariable=self.youtube_stream_id_var)
-        #     self.youtube_stream_id_input.pack(padx=20, pady=10)
 
-        #     self.toggle_start_Button = customtkinter.CTkButton(master=self,
-        #                                                        text="Start fetching chat",
-        #                                                        command=self.start_fetch_youtube,
-        #                                                        fg_color='grey'
-        #                                                        )
-        #     self.toggle_start_Button.pack(padx=20, pady=10)
-        self.chat_textbox = customtkinter.CTkTextbox(
-            self, width=200, height=200)
-        self.chat_textbox.pack(padx=20, pady=10)
-        streamChat.logging_eventhandlers.append(self.log_message_on_console)
+        elif (stream_type == 'twitch'):
+            label_twitch_access_token = customtkinter.CTkLabel(
+                master=self, text='Twitch access token: \n (get from twitchtokengenerator.com)')
+            label_twitch_access_token.pack(padx=20, pady=0)
+            self.twitch_access_token_var = customtkinter.StringVar(
+                self, streamChat.twitch_access_token)
+            self.twitch_access_token_var.trace_add(
+                'write', self.update_twitch_token)
+            self.youtube_stream_id_input = customtkinter.CTkEntry(
+                master=self, textvariable=self.twitch_access_token_var)
+            self.youtube_stream_id_input.pack(padx=20, pady=0)
 
-    def log_message_on_console(self, message_text):
-        # insert at line 0 character 0
-        self.chat_textbox.configure(state="normal")
-        self.chat_textbox.insert(customtkinter.INSERT, message_text+'\n')
-        self.chat_textbox.configure(state="disabled")
-        self.chat_textbox.see("end")
+            label_twitch_channel_name = customtkinter.CTkLabel(
+                master=self, text='Twitch channel name: ')
+            label_twitch_channel_name.pack(padx=20, pady=0)
+            self.twitch_channel_name_var = customtkinter.StringVar(
+                self, streamChat.twitch_channel_name)
+            self.twitch_channel_name_var.trace_add(
+                'write', self.update_twitch_chanel_name)
+            self.youtube_stream_id_input = customtkinter.CTkEntry(
+                master=self, textvariable=self.twitch_channel_name_var)
+            self.youtube_stream_id_input.pack(padx=20, pady=0)
+
+            self.toggle_start_Button_twitch = customtkinter.CTkButton(master=self,
+                                                                      text="Start fetching chat",
+                                                                      command=self.toggle_start_button_callback_twitch,
+                                                                      fg_color='grey'
+                                                                      )
+            self.toggle_start_Button_twitch.pack(padx=20, pady=10)
 
     def start_fetch_youtube(self):
         streamChat.read_chat_youtube()
@@ -768,16 +768,22 @@ class StreamFrame(customtkinter.CTkFrame):
     def toggle_start_button_callback_twitch(self):
         if streamChat.read_chat_twitch_thread_running:
             streamChat.stop_read_chat_twitch()
-            self.toggle_start_Button.configure(
-                text="Start fetching chat", fg_color='grey')
+            if not streamChat.read_chat_twitch_thread_running:
+                self.toggle_start_Button_twitch.configure(
+                    text="Start fetching chat", fg_color='grey')
         else:
             streamChat.read_chat_twitch()
-            self.toggle_start_Button.configure(
-                text="Stop fetching chat", fg_color='#fc7b5b')
+            if streamChat.read_chat_twitch_thread_running:
+                self.toggle_start_Button_twitch.configure(
+                    text="Stop fetching chat", fg_color='#fc7b5b')
 
     def update_twitch_token(self, str1, str2, str3):
-        self.youtube_stream_id = self.youtube_video_id_var.get()
-        STTS.save_config('youtube_stream_id', self.youtube_stream_id)
+        streamChat.twitch_access_token = self.twitch_access_token_var.get()
+        STTS.save_config('twitch_access_token', streamChat.twitch_access_token)
+
+    def update_twitch_chanel_name(self, str1, str2, str3):
+        streamChat.twitch_channel_name = self.twitch_channel_name_var.get()
+        STTS.save_config('twitch_channel_name', streamChat.twitch_channel_name)
 
 
 class Page(customtkinter.CTkFrame):
@@ -837,9 +843,25 @@ class StreamPage(Page):
             master=self, stream_type='youtube',  width=500, corner_radius=8)
         stream_frame.grid(row=0, column=0, padx=20, pady=20,
                           sticky="nswe")
-        options = OptionsFrame(master=self, enable_input_language=False)
-        options.grid(row=0, column=2, padx=20,
-                     pady=20, sticky="nswe")
+        stream_frame = StreamFrame(
+            master=self, stream_type='twitch',  width=500, corner_radius=8)
+        stream_frame.grid(row=0, column=1, padx=20, pady=20,
+                          sticky="nswe")
+        # options = OptionsFrame(master=self, enable_input_language=False)
+        # options.grid(row=0, column=2, padx=20,
+        #              pady=20, sticky="nswe")
+        self.chat_textbox = customtkinter.CTkTextbox(
+            self, width=200, height=200)
+        self.chat_textbox.grid(row=1, column=0, padx=20, pady=20, columnspan=2,
+                               sticky="nswe")
+        streamChat.logging_eventhandlers.append(self.log_message_on_console)
+
+    def log_message_on_console(self, message_text):
+        # insert at line 0 character 0
+        self.chat_textbox.configure(state="normal")
+        self.chat_textbox.insert(customtkinter.INSERT, message_text+'\n')
+        self.chat_textbox.configure(state="disabled")
+        self.chat_textbox.see("end")
 
 
 class SettingsPage(Page):

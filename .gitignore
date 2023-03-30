@@ -11,3 +11,4 @@ models--staka--fugumt-en-ja/
 *.exe
 *.wav
 !lore.txt
+config.json

@@ -17,6 +17,7 @@ from timer import Timer
 import whisper
 import chatbot
 import json
+import streamChat
 
 
 def load_config():
@@ -32,6 +33,9 @@ def load_config():
             voice_vox_api_key = data['voice_vox_api_key']
             global use_cloud_voice_vox
             use_cloud_voice_vox = data['use_cloud_voice_vox']
+            streamChat.twitch_access_token = data['twitch_access_token']
+            streamChat.twitch_channel_name = data['twitch_channel_name']
+            streamChat.youtube_video_id = data['youtube_video_id']
 
     except:
         print("Unable to load JSON file.")
