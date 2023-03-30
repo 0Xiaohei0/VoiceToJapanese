@@ -1,1 +1,12 @@
-{"use_deepl": false, "deepl_api_key": "", "use_cloud_voice_vox": false, "voice_vox_api_key": "", "openai_api_key": "", "youtube_video_id": "", "twitch_access_token": "", "twitch_channel_name": ""}
+{
+  "use_deepl": false,
+  "deepl_api_key": "",
+  "use_cloud_voice_vox": false,
+  "voice_vox_api_key": "",
+  "openai_api_key": "",
+  "youtube_video_id": "",
+  "twitch_access_token": "",
+  "twitch_channel_name": "",
+  "use_elevenlab": false,
+  "elevenlab_api_key": ""
+}
