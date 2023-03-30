@@ -29,6 +29,31 @@ audio_level = 0.3
 mic_meters = []
 
 
+class Microphone:
+    def __init__(self, device=None):
+        self.stream = sd.InputStream(callback=self.callback)
+        self.volume = 0.3
+        self.device = device
+        self.thread = Thread(target=self.start)
+
+    def start(self, device):
+        self.device = device
+        if self.stream is not None:
+            self.stream.stop()
+        self.stream = sd.InputStream(
+            device=self.device, callback=self.callback)
+        self.stream.start()
+        while True:
+            sd.sleep(1000)
+
+    def start_thread(self, device=None):
+        self.thread = Thread(target=self.start, args=(device,))
+        self.thread.start()
+
+    def callback(self, indata, frames, time, status):
+        self.volume = np.linalg.norm(indata) * 0.1
+
+
 class SidebarFrame(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         global current_page
@@ -359,11 +384,10 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
                 master=self, width=100)
             self.progressbar.grid(
                 row=3, column=0, padx=10, pady=10, sticky='W')
+            self.mic = Microphone()
+            self.mic.start_thread(device=get_command())
             thread = Thread(target=self.update_mic_meter_loop)
             thread.start()
-            self.listen_to_mic_thread = Thread(target=self.listen_to_mic)
-            self.listen_to_mic_thread.start()
-            global mic_meters
             mic_meters.append(self)
 
     def update_mic_meter_loop(self):
@@ -371,8 +395,8 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
             self.update_mic_meter()
 
     def update_mic_meter(self):
-        self.progressbar.set(self.audio_level)
-        time.sleep(0.01)
+        self.progressbar.set(self.mic.volume)
+        time.sleep(0.05)
 
     def listen_to_mic(self):
         self._subtitle_mic_stream = sd.InputStream(
@@ -398,12 +422,9 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
 
     def restart_mic_meter(self):
         global mic_meters
-        for mic in mic_meters:
-            print(mic.listen_to_mic_thread)
-            mic._subtitle_mic_stream.stop()
-            mic.listen_to_mic_thread.join()
-            mic.listen_to_mic_thread = Thread(target=self.listen_to_mic)
-            mic.listen_to_mic_thread.start()
+        for mic_meter in mic_meters:
+            print(mic_meter.get_command())
+            mic_meter.mic.start_thread(device=mic_meter.get_command())
 
     def audio_driver_dropdown_callback(self, choice):
         print(choice)
