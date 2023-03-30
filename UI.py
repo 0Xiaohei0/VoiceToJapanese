@@ -12,6 +12,7 @@ import time
 import subLocal as SUB
 import translator
 import chatbot
+import streamChat
 
 
 class Pages(Enum):
@@ -20,6 +21,7 @@ class Pages(Enum):
     SETTINGS = 2
     SUBTITLE = 3
     CHAT = 4
+    STREAM = 5
 
 
 current_page = Pages.AUDIO_INPUT
@@ -106,6 +108,18 @@ class SidebarFrame(customtkinter.CTkFrame):
                                               fg_color='grey'
                                               )
         chat_button.pack(anchor="s")
+
+        stream_button = customtkinter.CTkButton(master=self,
+                                                width=120,
+                                                height=32,
+                                                border_width=0,
+                                                corner_radius=0,
+                                                text="Stream",
+                                                command=lambda: self.change_page(
+                                                    Pages.STREAM),
+                                                fg_color='grey'
+                                                )
+        stream_button.pack(anchor="s")
 
         button = customtkinter.CTkButton(master=self,
                                          width=120,
@@ -672,6 +686,100 @@ class OptionsFrame(customtkinter.CTkFrame):
         print(f'Changed speaker ID to: {STTS.speaker_id}')
 
 
+class StreamFrame(customtkinter.CTkFrame):
+    def __init__(self, master, stream_type='youtube', **kwargs):
+        super().__init__(master, **kwargs)
+        if (stream_type == 'youtube'):
+            label_youtube_video_id = customtkinter.CTkLabel(
+                master=self, text='Youtube video id (example: Sdx3kCr8DvQ)')
+            label_youtube_video_id.pack(padx=20, pady=10)
+            self.youtube_video_id_var = customtkinter.StringVar(
+                self, streamChat.youtube_video_id)
+            self.youtube_video_id_var.trace_add(
+                'write', self.update_youtube_video_id)
+            self.youtube_stream_id_input = customtkinter.CTkEntry(
+                master=self, textvariable=self.youtube_video_id_var)
+            self.youtube_stream_id_input.pack(padx=20, pady=10)
+
+            self.toggle_start_Button = customtkinter.CTkButton(master=self,
+                                                               text="Start fetching chat",
+                                                               command=self.toggle_start_button_callback_youtube,
+                                                               fg_color='grey'
+                                                               )
+            self.toggle_start_Button.pack(padx=20, pady=10)
+        # elif (stream_type == 'twitch'):
+        #     self.twitch_access_token = ''
+        #     label_twitch_access_token = customtkinter.CTkLabel(
+        #         master=self, text='Twitch access token')
+        #     label_twitch_access_token.pack(padx=20, pady=10)
+        #     self.twitch_access_token_var = customtkinter.StringVar(
+        #         self, self.youtube_stream_id)
+        #     self.youtube_stream_id_var.trace_add(
+        #         'write', self.update_youtube_video_id)
+        #     self.youtube_stream_id_input = customtkinter.CTkEntry(
+        #         master=self, textvariable=self.youtube_stream_id_var)
+        #     self.youtube_stream_id_input.pack(padx=20, pady=10)
+
+        #     self.toggle_start_Button = customtkinter.CTkButton(master=self,
+        #                                                        text="Start fetching chat",
+        #                                                        command=self.start_fetch_youtube,
+        #                                                        fg_color='grey'
+        #                                                        )
+        #     self.toggle_start_Button.pack(padx=20, pady=10)
+        self.chat_textbox = customtkinter.CTkTextbox(
+            self, width=200, height=200)
+        self.chat_textbox.pack(padx=20, pady=10)
+        streamChat.logging_eventhandlers.append(self.log_message_on_console)
+
+    def log_message_on_console(self, message_text):
+        # insert at line 0 character 0
+        self.chat_textbox.configure(state="normal")
+        self.chat_textbox.insert(customtkinter.INSERT, message_text+'\n')
+        self.chat_textbox.configure(state="disabled")
+        self.chat_textbox.see("end")
+
+    def start_fetch_youtube(self):
+        streamChat.read_chat_youtube()
+
+    def stop_fetch_youtube(self):
+        streamChat.stop_read_chat_youtube()
+
+    def toggle_start_button_callback_youtube(self):
+        if streamChat.read_chat_youtube_thread_running:
+            self.stop_fetch_youtube()
+            self.toggle_start_Button.configure(
+                text="Start fetching chat", fg_color='grey')
+        else:
+            self.start_fetch_youtube()
+            if streamChat.read_chat_youtube_thread_running:
+                self.toggle_start_Button.configure(
+                    text="Stop fetching chat", fg_color='#fc7b5b')
+
+    def update_youtube_video_id(self, str1, str2, str3):
+        streamChat.youtube_video_id = self.youtube_video_id_var.get()
+        STTS.save_config('youtube_video_id', streamChat.youtube_video_id)
+
+    def start_fetch_twitch(self):
+        streamChat.read_chat_twitch()
+
+    def stop_fetch_twitch(self):
+        streamChat.stop_read_chat_twitch()
+
+    def toggle_start_button_callback_twitch(self):
+        if streamChat.read_chat_twitch_thread_running:
+            streamChat.stop_read_chat_twitch()
+            self.toggle_start_Button.configure(
+                text="Start fetching chat", fg_color='grey')
+        else:
+            streamChat.read_chat_twitch()
+            self.toggle_start_Button.configure(
+                text="Stop fetching chat", fg_color='#fc7b5b')
+
+    def update_twitch_token(self, str1, str2, str3):
+        self.youtube_stream_id = self.youtube_video_id_var.get()
+        STTS.save_config('youtube_stream_id', self.youtube_stream_id)
+
+
 class Page(customtkinter.CTkFrame):
     def __init__(self, *args, **kwargs):
         customtkinter.CTkFrame.__init__(self, *args, **kwargs)
@@ -687,7 +795,8 @@ class AudioInputPage(Page):
         console.grid(row=0, column=1, padx=20, pady=20,
                      sticky="nswe")
         options = OptionsFrame(master=self)
-        options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
+        options.grid(row=0, column=2, padx=20,
+                     pady=20, sticky="nswe")
 
 
 class TextInputPage(Page):
@@ -697,7 +806,8 @@ class TextInputPage(Page):
         textbox.grid(row=0, column=1, padx=20, pady=20,
                      sticky="nswe")
         options = OptionsFrame(master=self)
-        options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
+        options.grid(row=0, column=2, padx=20,
+                     pady=20, sticky="nswe")
 
 
 class SubtitlesPage(Page):
@@ -716,7 +826,20 @@ class ChatPage(Page):
         chat_frame.grid(row=0, column=1, padx=20, pady=20,
                         sticky="nswe")
         options = OptionsFrame(master=self, enable_input_language=False)
-        options.grid(row=0, column=2, padx=20, pady=20, sticky="nswe")
+        options.grid(row=0, column=2, padx=20,
+                     pady=20, sticky="nswe")
+
+
+class StreamPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        stream_frame = StreamFrame(
+            master=self, stream_type='youtube',  width=500, corner_radius=8)
+        stream_frame.grid(row=0, column=0, padx=20, pady=20,
+                          sticky="nswe")
+        options = OptionsFrame(master=self, enable_input_language=False)
+        options.grid(row=0, column=2, padx=20,
+                     pady=20, sticky="nswe")
 
 
 class SettingsPage(Page):
@@ -724,7 +847,8 @@ class SettingsPage(Page):
         Page.__init__(self, *args, **kwargs)
         mic_mode_label = customtkinter.CTkLabel(
             master=self, text='Microphone mode: ')
-        mic_mode_label.grid(row=0, column=0, padx=10, pady=10, sticky='W')
+        mic_mode_label.grid(row=0, column=0, padx=10,
+                            pady=10, sticky='W')
         self.mic_mode_combobox_var = customtkinter.StringVar(
             value='open mic')
         self.mic_mode_combobox = customtkinter.CTkComboBox(master=self,
@@ -736,7 +860,8 @@ class SettingsPage(Page):
             row=0, column=1, padx=10, pady=10, sticky='W')
         self.mic_key_label = customtkinter.CTkLabel(
             master=self, text=f'push to talk key: {STTS.PUSH_TO_RECORD_KEY}')
-        self.mic_key_label.grid(row=1, column=0, padx=10, pady=10, sticky='W')
+        self.mic_key_label.grid(row=1, column=0,
+                                padx=10, pady=10, sticky='W')
         self.change_mic_key_Button = customtkinter.CTkButton(master=self,
                                                              text="change key",
                                                              command=self.change_push_to_talk_key,
@@ -769,7 +894,8 @@ class SettingsPage(Page):
             self, translator.use_deepl)
         use_deepl_checkbox = customtkinter.CTkCheckBox(master=self, text="Use deepl (api key required)", command=self.set_use_deepl_var,
                                                        variable=self.use_deepl_var, onvalue=True, offvalue=False)
-        use_deepl_checkbox.grid(row=4, column=0, padx=10, pady=10, sticky='W')
+        use_deepl_checkbox.grid(row=4, column=0,
+                                padx=10, pady=10, sticky='W')
         self.deepl_api_key_var = customtkinter.StringVar(
             self, translator.deepl_api_key)
         self.deepl_api_key_var.trace_add('write', self.update_deepl_api_key)
@@ -864,22 +990,26 @@ class App(customtkinter.CTk):
         self.resizable(False, False)
 
         sidebar = SidebarFrame(master=self, width=100)
-        sidebar.grid(row=0, column=0, padx=20, pady=20, sticky="nswe")
+        sidebar.grid(row=0, column=0, padx=20,
+                     pady=20, sticky="nswe")
 
         audioInputPage = AudioInputPage(self)
         textInputPage = TextInputPage(self)
         settingsPage = SettingsPage(self)
         subtitlesPage = SubtitlesPage(self)
+        streamPage = StreamPage(self)
         chatPage = ChatPage(self)
         container = customtkinter.CTkFrame(
             self, width=700, height=700, bg_color='#fafafa')
-        container.grid(row=0, column=1, padx=20, pady=20, sticky="nswe")
+        container.grid(row=0, column=1, padx=20,
+                       pady=20, sticky="nswe")
 
         audioInputPage.place(in_=container, x=0, y=0)
         textInputPage.place(in_=container, x=0, y=0)
         subtitlesPage.place(in_=container, x=0, y=0)
         chatPage.place(in_=container, x=0, y=0)
         settingsPage.place(in_=container, x=0, y=0)
+        streamPage.place(in_=container, x=0, y=0)
 
         audioInputPage.show()
         global pageChange_eventhandlers
@@ -898,6 +1028,9 @@ class App(customtkinter.CTk):
             elif (current_page == Pages.SETTINGS):
                 container.lift()
                 settingsPage.show()
+            elif (current_page == Pages.STREAM):
+                container.lift()
+                streamPage.show()
             elif (current_page == Pages.CHAT):
                 container.lift()
                 chatPage.show()

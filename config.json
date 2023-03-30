@@ -1,7 +1,1 @@
-{
-  "use_deepl": false,
-  "deepl_api_key": "",
-  "use_cloud_voice_vox": false,
-  "voice_vox_api_key": "",
-  "openai_api_key": ""
-}
+{"use_deepl": false, "deepl_api_key": "", "use_cloud_voice_vox": false, "voice_vox_api_key": "", "openai_api_key": "", "youtube_video_id": "Sdx8kCr9DvQ"}
