@@ -57,6 +57,39 @@ def save_config(key, value):
         print(traceback.format_exc())
 
 
+def load_settings():
+    try:
+        with open("settings.json", "r") as json_file:
+            settings = json.load(json_file)
+            print(settings)
+            global input_device_id
+            input_device_id = settings['input_device_id']
+            global output_device_id
+            output_device_id = settings['output_device_id']
+            global mic_mode
+            mic_mode = settings['mic_mode']
+
+    except:
+        print("Unable to load Settings file.")
+        print(traceback.format_exc())
+
+
+def save_settings(key, value):
+    settings = None
+    try:
+        with open("settings.json", "r") as json_file:
+            settings = json.load(json_file)
+            settings[key] = value
+            print(f"setting[{key}] = {value}")
+        with open("settings.json", "w") as json_file:
+            json_object = json.dumps(settings)
+            json_file.write(json_object)
+    except:
+        print("Unable to load JSON file.")
+        print(traceback.format_exc())
+
+
+settings = None
 input_device_id = None
 output_device_id = None
 

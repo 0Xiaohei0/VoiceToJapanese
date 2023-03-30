@@ -1085,6 +1085,9 @@ print("Initializing translator...")
 translator.initialize()
 print("loading config... ")
 STTS.load_config()
+print("loading settings... ")
+settings = STTS.load_config()
+
 
 app = App()
 app.configure(background='#fafafa')

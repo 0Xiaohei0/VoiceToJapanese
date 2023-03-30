@@ -1,0 +1,10 @@
+{
+  "input_audio_driver": "MME",
+  "input_device": "Default",
+  "input_device_id": -1,
+  "output_audio_driver": "MME",
+  "output_device": "Default",
+  "output_device_id": -1,
+  "mic_mode": "open mic",
+  "push_to_talk_key": "5"
+}
