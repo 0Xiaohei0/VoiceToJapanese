@@ -216,6 +216,8 @@ class ConsoleFrame(customtkinter.CTkFrame):
         self.textbox.configure(state="normal")
         self.textbox.insert(customtkinter.INSERT, message_text+'\n')
         self.textbox.configure(state="disabled")
+        self.textbox.see("end")
+        
 
 
 class ChatFrame(customtkinter.CTkFrame):
@@ -309,6 +311,7 @@ class ChatFrame(customtkinter.CTkFrame):
         self.textbox.configure(state="normal")
         self.textbox.insert(customtkinter.INSERT, message_text+'\n')
         self.textbox.configure(state="disabled")
+        self.textbox.see("end")
 
 
 class TextBoxFrame(customtkinter.CTkFrame):
