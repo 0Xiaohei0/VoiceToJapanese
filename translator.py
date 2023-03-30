@@ -1,3 +1,4 @@
+import traceback
 from transformers import pipeline
 import requests
 import json
@@ -34,7 +35,9 @@ def translate(text, from_code, to_code):
                 return text_output
         except:
             print("Could not load json response from deepl.")
+            print(f'Response content: {translationResponse}')
             print(f'Response content: {translationResponse.content}')
+            print(traceback.format_exc())
             return ''
 
     else:

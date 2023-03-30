@@ -396,13 +396,19 @@ def start_TTS_pipeline(input_text):
     else:
         input_processed_text = input_text
 
+    # filter special characters
+    filtered_text = ''
+    for char in input_processed_text:
+        if char != "*":
+            filtered_text += char
+
     with open("translation.txt", "w", encoding="utf-8") as file:
-        file.write(input_processed_text)
+        file.write(filtered_text)
     step_timer.start()
     syntheize_audio(
-        input_processed_text, speaker_id)
+        filtered_text, speaker_id)
     log_message(
-        f"Speech synthesized for text [{input_processed_text}] ({step_timer.end()}s)")
+        f"Speech synthesized for text [{filtered_text}] ({step_timer.end()}s)")
     log_message(
         f'Total time: ({round(pipeline_elapsed_time + pipeline_timer.end(),2)}s)')
     PlayAudio()
