@@ -1,3 +1,5 @@
+import io
+import os
 from threading import Thread
 import time
 import traceback
@@ -18,6 +20,7 @@ import whisper
 import chatbot
 import json
 import streamChat
+import soundfile as sf
 
 
 def load_config():
@@ -33,9 +36,16 @@ def load_config():
             voice_vox_api_key = data['voice_vox_api_key']
             global use_cloud_voice_vox
             use_cloud_voice_vox = data['use_cloud_voice_vox']
+            global use_elevenlab
+            use_elevenlab = data['use_elevenlab']
+            global elevenlab_api_key
+            elevenlab_api_key = data['elevenlab_api_key']
             streamChat.twitch_access_token = data['twitch_access_token']
             streamChat.twitch_channel_name = data['twitch_channel_name']
             streamChat.youtube_video_id = data['youtube_video_id']
+
+            if (elevenlab_api_key == ''):
+                elevenlab_api_key = os.getenv("ELEVENLAB_API_KEY")
 
     except:
         print("Unable to load JSON file.")
@@ -99,6 +109,8 @@ VOICE_VOX_URL_LOCAL = "127.0.0.1"
 
 VOICE_OUTPUT_FILENAME = "audioResponse.wav"
 
+use_elevenlab = False
+elevenlab_api_key = ''
 use_cloud_voice_vox = False
 voice_vox_api_key = ''
 speakersResponse = None
@@ -241,12 +253,15 @@ def cloud_synthesize(text, speaker_id, api_key=''):
 
 
 def syntheize_audio(text, speaker_id):
-    global use_cloud_voice_vox
-    global voice_vox_api_key
-    if (use_cloud_voice_vox):
-        cloud_synthesize(text, speaker_id, api_key=voice_vox_api_key)
+    global use_cloud_voice_vox, voice_vox_api_key
+    global use_elevenlab
+    if (use_elevenlab):
+        elevenlab_synthesize(text)
     else:
-        local_synthesize(text, speaker_id)
+        if (use_cloud_voice_vox):
+            cloud_synthesize(text, speaker_id, api_key=voice_vox_api_key)
+        else:
+            local_synthesize(text, speaker_id)
 
 
 def local_synthesize(text, speaker_id):
@@ -257,6 +272,32 @@ def local_synthesize(text, speaker_id):
 
     with open(VOICE_OUTPUT_FILENAME, "wb") as file:
         file.write(AudioResponse.content)
+
+
+def elevenlab_synthesize(message):
+
+    global elevenlab_api_key
+    url = f'https://api.elevenlabs.io/v1/text-to-speech/MF3mGyEYCl7XYWbV9V6O'
+    headers = {
+        'accept': 'audio/mpeg',
+        'xi-api-key': elevenlab_api_key,
+        'Content-Type': 'application/json'
+    }
+    data = {
+        'text': message,
+        'voice_settings': {
+            'stability': 0.75,
+            'similarity_boost': 0.75
+        }
+    }
+    print(f"Sending POST request to: {url}")
+    response = requests.post(url, headers=headers, json=data, stream=True)
+    print(response)
+    audio_content = AudioSegment.from_file(
+        io.BytesIO(response.content), format="mp3")
+    audio_content.export(VOICE_OUTPUT_FILENAME, 'wav')
+    # with open(VOICE_OUTPUT_FILENAME, "wb") as file:
+    #     file.write(audio_content.)
 
 
 def PlayAudio():
@@ -421,7 +462,10 @@ def start_TTS_pipeline(input_text):
     global pipeline_elapsed_time
     pipeline_timer.start()
     inputLanguage = language_dict[input_language_name][:2]
-    outputLanguage = 'ja'
+    if (use_elevenlab):
+        outputLanguage = 'en'
+    else:
+        outputLanguage = 'ja'
     # print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
     translate = inputLanguage != outputLanguage
     if (translate):

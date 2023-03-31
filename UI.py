@@ -217,7 +217,6 @@ class ConsoleFrame(customtkinter.CTkFrame):
         self.textbox.insert(customtkinter.INSERT, message_text+'\n')
         self.textbox.configure(state="disabled")
         self.textbox.see("end")
-        
 
 
 class ChatFrame(customtkinter.CTkFrame):
@@ -957,6 +956,21 @@ class SettingsPage(Page):
         self.openai_api_key_input.grid(
             row=6, column=1, padx=10, pady=10, sticky='W')
 
+        self.use_elevenlab_var = customtkinter.BooleanVar(
+            self, STTS.use_elevenlab)
+        use_elevenlab_checkbox = customtkinter.CTkCheckBox(master=self, text="Use elevenlab on cloud (api key required)", command=self.set_use_elevenlab_var,
+                                                           variable=self.use_elevenlab_var, onvalue=True, offvalue=False)
+        use_elevenlab_checkbox.grid(
+            row=7, column=0, padx=10, pady=10, sticky='W')
+        self.elevenlab_api_key_var = customtkinter.StringVar(
+            self, STTS.voice_vox_api_key)
+        self.elevenlab_api_key_var.trace_add(
+            'write', self.update_elevenlab_api_key)
+        self.elevenlab_api_key_input = customtkinter.CTkEntry(
+            master=self, textvariable=self.elevenlab_api_key_var)
+        self.elevenlab_api_key_input.grid(
+            row=7, column=1, padx=10, pady=10, sticky='W')
+
     def input_device_index_update_callback(self, value):
         STTS.input_device_id = value
 
@@ -988,6 +1002,15 @@ class SettingsPage(Page):
     def update_voicevox_api_key(self, str1, str2, str3):
         STTS.voice_vox_api_key = self.voicevox_api_key_var.get()
         STTS.save_config('voice_vox_api_key', STTS.voice_vox_api_key)
+
+    def set_use_elevenlab_var(self):
+        print(f'use_elevenlab set to {self.use_voicevox_var.get()}')
+        STTS.use_elevenlab = self.use_elevenlab_var.get()
+        STTS.save_config('use_elevenlab', STTS.use_elevenlab)
+
+    def update_elevenlab_api_key(self, str1, str2, str3):
+        STTS.elevenlab_api_key = self.elevenlab_api_key_var.get()
+        STTS.save_config('elevenlab_api_key', STTS.elevenlab_api_key)
 
     def update_openai_api_key(self, str1, str2, str3):
         chatbot.openai_api_key = self.openai_api_key_var.get()
