@@ -466,7 +466,7 @@ def start_TTS_pipeline(input_text):
         outputLanguage = 'en'
     else:
         outputLanguage = 'ja'
-    # print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
+    print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
     translate = inputLanguage != outputLanguage
     if (translate):
         step_timer.start()
