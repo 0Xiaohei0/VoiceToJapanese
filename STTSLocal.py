@@ -1,5 +1,6 @@
 import io
 import os
+import subprocess
 from threading import Thread
 import time
 import traceback
@@ -14,7 +15,6 @@ from enum import Enum
 import romajitable
 import dict
 import translator
-from voicevox import vboxclient
 from timer import Timer
 import whisper
 import chatbot
@@ -114,7 +114,7 @@ elevenlab_api_key = ''
 use_cloud_voice_vox = False
 voice_vox_api_key = ''
 speakersResponse = None
-vboxapp = None
+voicevox_server_started = False
 speaker_id = 1
 mic_mode = 'open mic'
 MIC_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
@@ -134,19 +134,17 @@ def initialize_model():
 
 
 def start_voicevox_server():
-    global vboxapp
-    if (vboxapp != None):
+    global voicevox_server_started
+    if (voicevox_server_started):
         return
     # start voicevox server
-    vboxapp = vboxclient.voiceclient()  # Class「voiceclient」を利用可能にする
-    # vboxapp.vbox_dl()  # インストーラーをダウンロード&実行
-    vboxapp.app(exepass="VOICEVOX\\run.exe")
+    subprocess.Popen("VOICEVOX\\run.exe")
+    voicevox_server_started = True
 
 
 def initialize_speakers():
     global speakersResponse
-    global vboxapp
-    if (vboxapp == None):
+    if (not voicevox_server_started):
         start_voicevox_server()
     url = f"http://{VOICE_VOX_URL_LOCAL}:50021/speakers"
     while True:

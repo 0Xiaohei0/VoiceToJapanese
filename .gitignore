@@ -2,6 +2,7 @@
 Audio/*
 Output/*
 .env
+.clean_env
 *.txt
 __*
 test.py
