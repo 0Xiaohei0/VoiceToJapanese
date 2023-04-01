@@ -1,15 +1,24 @@
-# Voice To Japanese
-(Please unmute the video)
+# Voice To Japanese (An all-in-one tool for making your own AI Vtuber)
+
+You can use Voice To Japanese to:
+- Host your own AI Vtuber stream. The AI can respond to stream chat.
+- Translate your microphone input to Japanese voice.
+- Have a face-to-face converstaion with an AI Vtuber, whose personality and character description can be customized to your liking.
+Full demo and setup guide: https://youtu.be/qEbn44m3Ty0
+
+(please unmute the video)
+
+https://user-images.githubusercontent.com/24196833/229300992-edbb0cbb-fcad-43d2-bb22-805a86b3b00c.mp4
 
 
-https://user-images.githubusercontent.com/24196833/223325680-87ec37f3-7f15-4b83-a288-2d753ca4b4a3.mp4
 
-Voice To Japanese is a python script that turns your microphone input into synthesized audio in Japanese. The Japanese audio output can redirected to your in-game voice chat, discord etc. via a virtual audio cable. It uses Azure tts to transcribe microphone input into text. The text is then passed to DeepL Translate to convert into Japanese. Lastly Voice Vox is used to synthesize the Japanese audio output. 
+
+The Japanese voice can redirected to your in-game voice chat, discord etc. via a virtual audio cable. It uses open-ai whisper to transcribe microphone input into text. The text is then passed to DeepL Translate to convert into Japanese. Lastly Voice Vox is used to synthesize the Japanese audio output. 
 
 ## Installation
 Download the zip file from the releases section (https://github.com/0Xiaohei0/VoiceToJapanese/releases) 
 
-Run the .exe file inside. No additional setup is required. All AI models are now hosted on azure.
+Run the .exe file inside. No additional setup is required.
 
 ## Usage
 Press the start recording button.
