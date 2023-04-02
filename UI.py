@@ -788,87 +788,9 @@ class StreamFrame(customtkinter.CTkFrame):
         STTS.save_config('twitch_channel_name', streamChat.twitch_channel_name)
 
 
-class Page(customtkinter.CTkFrame):
-    def __init__(self, *args, **kwargs):
-        customtkinter.CTkFrame.__init__(self, *args, **kwargs)
-
-    def show(self):
-        self.lift()
-
-
-class AudioInputPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-        console = ConsoleFrame(master=self, width=500, corner_radius=8)
-        console.grid(row=0, column=1, padx=20, pady=20,
-                     sticky="nswe")
-        options = OptionsFrame(master=self)
-        options.grid(row=0, column=2, padx=20,
-                     pady=20, sticky="nswe")
-
-
-class TextInputPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-        textbox = TextBoxFrame(master=self, width=500, corner_radius=8)
-        textbox.grid(row=0, column=1, padx=20, pady=20,
-                     sticky="nswe")
-        options = OptionsFrame(master=self)
-        options.grid(row=0, column=2, padx=20,
-                     pady=20, sticky="nswe")
-
-
-class SubtitlesPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-        subtitles_frame = SubtitlesFrame(
-            master=self, width=500, corner_radius=8)
-        subtitles_frame.pack(padx=0, pady=0)
-
-
-class ChatPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-        chat_frame = ChatFrame(
-            master=self, width=500, corner_radius=8)
-        chat_frame.grid(row=0, column=1, padx=20, pady=20,
-                        sticky="nswe")
-        options = OptionsFrame(master=self, enable_input_language=False)
-        options.grid(row=0, column=2, padx=20,
-                     pady=20, sticky="nswe")
-
-
-class StreamPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-        stream_frame = StreamFrame(
-            master=self, stream_type='youtube',  width=500, corner_radius=8)
-        stream_frame.grid(row=0, column=0, padx=20, pady=20,
-                          sticky="nswe")
-        stream_frame = StreamFrame(
-            master=self, stream_type='twitch',  width=500, corner_radius=8)
-        stream_frame.grid(row=0, column=1, padx=20, pady=20,
-                          sticky="nswe")
-        # options = OptionsFrame(master=self, enable_input_language=False)
-        # options.grid(row=0, column=2, padx=20,
-        #              pady=20, sticky="nswe")
-        self.chat_textbox = customtkinter.CTkTextbox(
-            self, width=200, height=200)
-        self.chat_textbox.grid(row=1, column=0, padx=20, pady=20, columnspan=2,
-                               sticky="nswe")
-        streamChat.logging_eventhandlers.append(self.log_message_on_console)
-
-    def log_message_on_console(self, message_text):
-        # insert at line 0 character 0
-        self.chat_textbox.configure(state="normal")
-        self.chat_textbox.insert(customtkinter.INSERT, message_text+'\n')
-        self.chat_textbox.configure(state="disabled")
-        self.chat_textbox.see("end")
-
-
-class SettingsPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
+class SettingsFrame(customtkinter.CTkScrollableFrame):
+    def __init__(self, master,  **kwargs):
+        super().__init__(master, **kwargs)
         mic_mode_label = customtkinter.CTkLabel(
             master=self, text='Microphone mode: ')
         mic_mode_label.grid(row=0, column=0, padx=10,
@@ -971,6 +893,21 @@ class SettingsPage(Page):
         self.elevenlab_api_key_input.grid(
             row=7, column=1, padx=10, pady=10, sticky='W')
 
+        self.use_ingame_push_to_talk_key_var = customtkinter.BooleanVar(
+            self, STTS.use_ingame_push_to_talk_key)
+        self.ingame_push_to_talk_key_checkbox = customtkinter.CTkCheckBox(master=self, text=f'In-game push to talk key: {STTS.ingame_push_to_talk_key}', command=self.set_use_ingame_push_to_talk_key_var,
+                                                                          variable=self.use_ingame_push_to_talk_key_var, onvalue=True, offvalue=False)
+        self.ingame_push_to_talk_key_checkbox.grid(
+            row=8, column=0, padx=10, pady=10, sticky='W')
+
+        self.ingame_push_to_talk_key_Button = customtkinter.CTkButton(master=self,
+                                                                      text="change key",
+                                                                      command=self.change_ingame_push_to_talk_key,
+                                                                      fg_color='grey'
+                                                                      )
+        self.ingame_push_to_talk_key_Button.grid(
+            row=8, column=1, padx=10, pady=10, sticky='W')
+
     def input_device_index_update_callback(self, value):
         STTS.input_device_id = value
 
@@ -1020,6 +957,15 @@ class SettingsPage(Page):
         thread = Thread(target=self.listen_for_key)
         thread.start()
 
+    def change_ingame_push_to_talk_key(self):
+        thread = Thread(target=self.listen_for_key_ingame)
+        thread.start()
+
+    def set_use_ingame_push_to_talk_key_var(self):
+        print(
+            f'use_ingame_push_to_talk_key set to {self.use_ingame_push_to_talk_key_var.get()}')
+        STTS.use_ingame_push_to_talk_key = self.use_ingame_push_to_talk_key_var.get()
+
     def listen_for_key(self):
         self.mic_key_label.configure(text='listening to keypress...')
         self.change_mic_key_Button.configure(fg_color='#fc7b5b')
@@ -1028,6 +974,103 @@ class SettingsPage(Page):
         self.mic_key_label.configure(
             text=f'push to talk key: {STTS.PUSH_TO_RECORD_KEY}')
         self.change_mic_key_Button.configure(fg_color='grey')
+
+    def listen_for_key_ingame(self):
+        self.ingame_push_to_talk_key_checkbox.configure(
+            text='listening to keypress...')
+        self.ingame_push_to_talk_key_Button.configure(fg_color='#fc7b5b')
+        key = keyboard.read_key()
+        STTS.ingame_push_to_talk_key = key
+        self.ingame_push_to_talk_key_checkbox.configure(
+            text=f'In-game push to talk key: {STTS.ingame_push_to_talk_key}')
+        self.ingame_push_to_talk_key_Button.configure(fg_color='grey')
+
+
+class Page(customtkinter.CTkFrame):
+    def __init__(self, *args, **kwargs):
+        customtkinter.CTkFrame.__init__(self, *args, **kwargs)
+
+    def show(self):
+        self.lift()
+
+
+class AudioInputPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        console = ConsoleFrame(master=self, width=500, corner_radius=8)
+        console.grid(row=0, column=1, padx=20, pady=20,
+                     sticky="nswe")
+        options = OptionsFrame(master=self)
+        options.grid(row=0, column=2, padx=20,
+                     pady=20, sticky="nswe")
+
+
+class TextInputPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        textbox = TextBoxFrame(master=self, width=500, corner_radius=8)
+        textbox.grid(row=0, column=1, padx=20, pady=20,
+                     sticky="nswe")
+        options = OptionsFrame(master=self)
+        options.grid(row=0, column=2, padx=20,
+                     pady=20, sticky="nswe")
+
+
+class SubtitlesPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        subtitles_frame = SubtitlesFrame(
+            master=self, width=500, corner_radius=8)
+        subtitles_frame.pack(padx=0, pady=0)
+
+
+class ChatPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        chat_frame = ChatFrame(
+            master=self, width=500, corner_radius=8)
+        chat_frame.grid(row=0, column=1, padx=20, pady=20,
+                        sticky="nswe")
+        options = OptionsFrame(master=self, enable_input_language=False)
+        options.grid(row=0, column=2, padx=20,
+                     pady=20, sticky="nswe")
+
+
+class StreamPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        stream_frame = StreamFrame(
+            master=self, stream_type='youtube',  width=500, corner_radius=8)
+        stream_frame.grid(row=0, column=0, padx=20, pady=20,
+                          sticky="nswe")
+        stream_frame = StreamFrame(
+            master=self, stream_type='twitch',  width=500, corner_radius=8)
+        stream_frame.grid(row=0, column=1, padx=20, pady=20,
+                          sticky="nswe")
+        # options = OptionsFrame(master=self, enable_input_language=False)
+        # options.grid(row=0, column=2, padx=20,
+        #              pady=20, sticky="nswe")
+        self.chat_textbox = customtkinter.CTkTextbox(
+            self, width=200, height=200)
+        self.chat_textbox.grid(row=1, column=0, padx=20, pady=20, columnspan=2,
+                               sticky="nswe")
+        streamChat.logging_eventhandlers.append(self.log_message_on_console)
+
+    def log_message_on_console(self, message_text):
+        # insert at line 0 character 0
+        self.chat_textbox.configure(state="normal")
+        self.chat_textbox.insert(customtkinter.INSERT, message_text+'\n')
+        self.chat_textbox.configure(state="disabled")
+        self.chat_textbox.see("end")
+
+
+class SettingsPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        settings_frame = SettingsFrame(
+            master=self,  width=620, height=440,  corner_radius=8)
+        settings_frame.grid(row=0, column=0, padx=0, pady=0,
+                            sticky="nswe")
 
 
 class App(customtkinter.CTk):

@@ -119,6 +119,8 @@ speaker_id = 1
 mic_mode = 'open mic'
 MIC_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
 PUSH_TO_RECORD_KEY = '5'
+use_ingame_push_to_talk_key = False
+ingame_push_to_talk_key = 'f'
 
 whisper_filter_list = ['you', 'thank you.', 'thanks for watching.']
 pipeline_elapsed_time = 0
@@ -490,8 +492,13 @@ def start_TTS_pipeline(input_text):
         f"Speech synthesized for text [{filtered_text}] ({step_timer.end()}s)")
     log_message(
         f'Total time: ({round(pipeline_elapsed_time + pipeline_timer.end(),2)}s)')
+    print(f"ingame_push_to_talk_key: {ingame_push_to_talk_key}")
+    global use_ingame_push_to_talk_key
+    if (use_ingame_push_to_talk_key and ingame_push_to_talk_key != ''):
+        keyboard.press(ingame_push_to_talk_key)
     PlayAudio()
-
+    if (use_ingame_push_to_talk_key and ingame_push_to_talk_key != ''):
+        keyboard.release(ingame_push_to_talk_key)
     global last_input_text
     last_input_text = input_text
     global last_input_language
