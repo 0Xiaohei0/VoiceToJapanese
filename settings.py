@@ -3,18 +3,20 @@ import json
 
 
 def load_settings():
-    # if settings.json does not exist, create one
-    with open("settings.json", "w") as json_file:
-        json.dump({}, json_file)
+    global settings
     try:
         with open("settings.json", "r") as json_file:
-            global settings
+
             settings = json.load(json_file)
             print(settings)
 
     except:
         print("Unable to load Settings file.")
         print(traceback.format_exc())
+        print("Creating new settings file...")
+        settings = {}
+        with open("settings.json", "w") as json_file:
+            json.dump(settings, json_file)
 
 
 def save_settings(key, value):
@@ -37,7 +39,7 @@ def get_settings(key):
         return settings[key]
     except:
         print(f"setting[{key}] is not found.")
-        #print(traceback.format_exc())
+        # print(traceback.format_exc())
         return ''
 
 

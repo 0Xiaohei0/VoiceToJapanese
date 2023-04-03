@@ -836,8 +836,12 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
             master=self, text='Microphone mode: ')
         mic_mode_label.grid(row=0, column=0, padx=10,
                             pady=10, sticky='W')
+        default_mic_mode = 'open mic'
+        mic_mode_setting = settings.get_settings('mic_mode')
+        if (mic_mode_setting in ['open mic', 'push to talk']):
+            default_mic_mode = mic_mode_setting
         self.mic_mode_combobox_var = customtkinter.StringVar(
-            value='open mic')
+            value=default_mic_mode)
         self.mic_mode_combobox = customtkinter.CTkComboBox(master=self,
                                                            values=[
                                                                'open mic', 'push to talk'],
@@ -845,8 +849,12 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
                                                            variable=self.mic_mode_combobox_var)
         self.mic_mode_combobox.grid(
             row=0, column=1, padx=10, pady=10, sticky='W')
+        default_push_to_talk_key = '5'
+        push_to_talk_key_setting = settings.get_settings('push_to_talk_key')
+        if (push_to_talk_key_setting):
+            default_push_to_talk_key = push_to_talk_key_setting
         self.mic_key_label = customtkinter.CTkLabel(
-            master=self, text=f'push to talk key: {STTS.PUSH_TO_RECORD_KEY}')
+            master=self, text=f'push to talk key: {default_push_to_talk_key}')
         self.mic_key_label.grid(row=1, column=0,
                                 padx=10, pady=10, sticky='W')
         self.change_mic_key_Button = customtkinter.CTkButton(master=self,
@@ -963,6 +971,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
 
     def mic_mode_dropdown_callbakck(self, choice):
         STTS.mic_mode = choice
+        settings.save_settings('mic_mode', choice)
 
     def set_use_deepl_var(self):
         translator.use_deepl = self.use_deepl_var.get()
@@ -1012,6 +1021,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         self.change_mic_key_Button.configure(fg_color='#fc7b5b')
         key = keyboard.read_key()
         STTS.PUSH_TO_RECORD_KEY = key
+        settings.save_settings('push_to_talk_key', value=key)
         self.mic_key_label.configure(
             text=f'push to talk key: {STTS.PUSH_TO_RECORD_KEY}')
         self.change_mic_key_Button.configure(fg_color='grey')

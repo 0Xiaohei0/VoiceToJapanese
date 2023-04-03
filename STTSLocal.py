@@ -60,7 +60,7 @@ def save_config(key, value):
             config[key] = value
             print(f"config[{key}] = {value}")
         with open("config.json", "w") as json_file:
-            json_object = json.dumps(config)
+            json_object = json.dumps(config, indent=4)
             json_file.write(json_object)
     except:
         print("Unable to load JSON file.")
