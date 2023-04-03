@@ -840,6 +840,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         mic_mode_setting = settings.get_settings('mic_mode')
         if (mic_mode_setting in ['open mic', 'push to talk']):
             default_mic_mode = mic_mode_setting
+        STTS.mic_mode = default_mic_mode
         self.mic_mode_combobox_var = customtkinter.StringVar(
             value=default_mic_mode)
         self.mic_mode_combobox = customtkinter.CTkComboBox(master=self,
@@ -942,8 +943,19 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         self.elevenlab_api_key_input.grid(
             row=7, column=1, padx=10, pady=10, sticky='W')
 
+        default = False
+        setting = settings.get_settings(
+            'use_ingame_push_to_talk')
+        if (setting != ''):
+            default = setting
+        STTS.use_ingame_push_to_talk_key = default
         self.use_ingame_push_to_talk_key_var = customtkinter.BooleanVar(
             self, STTS.use_ingame_push_to_talk_key)
+        default = 'f'
+        setting = settings.get_settings('ingame_push_to_talk_key')
+        if (setting != ''):
+            default = setting
+        STTS.ingame_push_to_talk_key = default
         self.ingame_push_to_talk_key_checkbox = customtkinter.CTkCheckBox(master=self, text=f'In-game push to talk key: {STTS.ingame_push_to_talk_key}', command=self.set_use_ingame_push_to_talk_key_var,
                                                                           variable=self.use_ingame_push_to_talk_key_var, onvalue=True, offvalue=False)
         self.ingame_push_to_talk_key_checkbox.grid(
@@ -1015,6 +1027,8 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         print(
             f'use_ingame_push_to_talk_key set to {self.use_ingame_push_to_talk_key_var.get()}')
         STTS.use_ingame_push_to_talk_key = self.use_ingame_push_to_talk_key_var.get()
+        settings.save_settings("use_ingame_push_to_talk",
+                               STTS.use_ingame_push_to_talk_key)
 
     def listen_for_key(self):
         self.mic_key_label.configure(text='listening to keypress...')
@@ -1032,6 +1046,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         self.ingame_push_to_talk_key_Button.configure(fg_color='#fc7b5b')
         key = keyboard.read_key()
         STTS.ingame_push_to_talk_key = key
+        settings.save_settings("ingame_push_to_talk_key", key)
         self.ingame_push_to_talk_key_checkbox.configure(
             text=f'In-game push to talk key: {STTS.ingame_push_to_talk_key}')
         self.ingame_push_to_talk_key_Button.configure(fg_color='grey')
