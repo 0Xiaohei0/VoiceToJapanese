@@ -78,6 +78,7 @@ VOICE_OUTPUT_FILENAME = "audioResponse.wav"
 
 use_elevenlab = False
 elevenlab_api_key = ''
+elevenlab_voiceid = ''
 use_cloud_voice_vox = False
 voice_vox_api_key = ''
 speakersResponse = None
@@ -244,7 +245,7 @@ def local_synthesize(text, speaker_id):
 def elevenlab_synthesize(message):
 
     global elevenlab_api_key
-    url = f'https://api.elevenlabs.io/v1/text-to-speech/MF3mGyEYCl7XYWbV9V6O'
+    url = f'https://api.elevenlabs.io/v1/text-to-speech/{elevenlab_voiceid}'
     headers = {
         'accept': 'audio/mpeg',
         'xi-api-key': elevenlab_api_key,

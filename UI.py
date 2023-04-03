@@ -1,3 +1,4 @@
+import json
 from threading import Thread
 import customtkinter
 import keyboard
@@ -943,6 +944,27 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         self.elevenlab_api_key_input.grid(
             row=7, column=1, padx=10, pady=10, sticky='W')
 
+        with open("elevenlabVoices.json", "r") as json_file:
+            elevenlab_voice_response = json.load(json_file)
+            self.elevenlab_voice_list = list(map(lambda voice: {
+                "name": voice['name'], "voice_id": voice['voice_id']},  elevenlab_voice_response['voices']))
+            self.elevenlab_voice_list_names = list(
+                map(lambda voice: voice['name'],  elevenlab_voice_response['voices']))
+            print(self.elevenlab_voice_list)
+        default_voice = "Elli"
+        elevenlab_voice_setting = settings.get_settings("elevenlab_voice_name")
+
+        if (elevenlab_voice_setting != ''):
+            default_voice = elevenlab_voice_setting
+        self.elevenlab_voice_combobox_var = customtkinter.StringVar(
+            value=default_voice)
+        self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
+                                                              values=self.elevenlab_voice_list_names,
+                                                              command=self.elevenlab_voice_dropdown_callback,
+                                                              variable=self.elevenlab_voice_combobox_var)
+        self.audio_input_combobox.grid(
+            row=8, column=0, padx=10, pady=10, sticky='W')
+
         default = False
         setting = settings.get_settings(
             'use_ingame_push_to_talk')
@@ -959,7 +981,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         self.ingame_push_to_talk_key_checkbox = customtkinter.CTkCheckBox(master=self, text=f'In-game push to talk key: {STTS.ingame_push_to_talk_key}', command=self.set_use_ingame_push_to_talk_key_var,
                                                                           variable=self.use_ingame_push_to_talk_key_var, onvalue=True, offvalue=False)
         self.ingame_push_to_talk_key_checkbox.grid(
-            row=8, column=0, padx=10, pady=10, sticky='W')
+            row=9, column=0, padx=10, pady=10, sticky='W')
 
         self.ingame_push_to_talk_key_Button = customtkinter.CTkButton(master=self,
                                                                       text="change key",
@@ -967,7 +989,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
                                                                       fg_color='grey'
                                                                       )
         self.ingame_push_to_talk_key_Button.grid(
-            row=8, column=1, padx=10, pady=10, sticky='W')
+            row=9, column=1, padx=10, pady=10, sticky='W')
 
     def input_device_index_update_callback(self, value):
         STTS.input_device_id = value
@@ -1050,6 +1072,12 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         self.ingame_push_to_talk_key_checkbox.configure(
             text=f'In-game push to talk key: {STTS.ingame_push_to_talk_key}')
         self.ingame_push_to_talk_key_Button.configure(fg_color='grey')
+
+    def elevenlab_voice_dropdown_callback(self, choice):
+        for voice in self.elevenlab_voice_list:
+            if (voice['name'] == choice):
+                settings.save_settings("elevenlab_voice_name", choice)
+                STTS.elevenlab_voiceid = voice['voice_id']
 
 
 class Page(customtkinter.CTkFrame):
