@@ -7,6 +7,7 @@ import STTSLocal as STTS
 
 openai_api_key = ''
 AI_RESPONSE_FILENAME = 'ai-response.txt'
+character_limit = 3000
 
 lore = ''
 try:
@@ -19,7 +20,7 @@ lore = lore.replace('\n', '')
 
 message_log = [
     {"role": "system", "content": lore},
-    {"role": "user", "content": lore},
+    # {"role": "user", "content": lore},
 ]
 
 logging_eventhandlers = []
@@ -33,9 +34,17 @@ def send_user_input(user_input):
         openai_api_key = os.getenv("OPENAI_API_KEY")
 
     openai.api_key = openai_api_key
-    print(f"Sending: {user_input} with api key :{openai_api_key}")
-    print(message_log)
+    print(f"Sending: {user_input}")
     message_log.append({"role": "user", "content": user_input})
+    print(message_log)
+    total_characters = sum(len(message['content']) for message in message_log)
+    print(f"total_characters: {total_characters}")
+    while total_characters > character_limit and len(message_log) > 1:
+        print(
+            f"total_characters {total_characters} exceed limit of {character_limit}, removing oldest message")
+        total_characters -= len(message_log[1]["content"])
+        message_log.pop(1)
+
     response = None
     try:
         response = openai.ChatCompletion.create(
