@@ -1,5 +1,6 @@
 import io
 import os
+import subprocess
 from threading import Thread
 import time
 import traceback
@@ -14,7 +15,6 @@ from enum import Enum
 import romajitable
 import dict
 import translator
-from voicevox import vboxclient
 from timer import Timer
 import whisper
 import chatbot
@@ -60,46 +60,13 @@ def save_config(key, value):
             config[key] = value
             print(f"config[{key}] = {value}")
         with open("config.json", "w") as json_file:
-            json_object = json.dumps(config)
+            json_object = json.dumps(config, indent=4)
             json_file.write(json_object)
     except:
         print("Unable to load JSON file.")
         print(traceback.format_exc())
 
 
-def load_settings():
-    try:
-        with open("settings.json", "r") as json_file:
-            settings = json.load(json_file)
-            print(settings)
-            global input_device_id
-            input_device_id = settings['input_device_id']
-            global output_device_id
-            output_device_id = settings['output_device_id']
-            global mic_mode
-            mic_mode = settings['mic_mode']
-
-    except:
-        print("Unable to load Settings file.")
-        print(traceback.format_exc())
-
-
-def save_settings(key, value):
-    settings = None
-    try:
-        with open("settings.json", "r") as json_file:
-            settings = json.load(json_file)
-            settings[key] = value
-            print(f"setting[{key}] = {value}")
-        with open("settings.json", "w") as json_file:
-            json_object = json.dumps(settings)
-            json_file.write(json_object)
-    except:
-        print("Unable to load JSON file.")
-        print(traceback.format_exc())
-
-
-settings = None
 input_device_id = None
 output_device_id = None
 
@@ -111,14 +78,17 @@ VOICE_OUTPUT_FILENAME = "audioResponse.wav"
 
 use_elevenlab = False
 elevenlab_api_key = ''
+elevenlab_voiceid = ''
 use_cloud_voice_vox = False
 voice_vox_api_key = ''
 speakersResponse = None
-vboxapp = None
+voicevox_server_started = False
 speaker_id = 1
 mic_mode = 'open mic'
 MIC_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
 PUSH_TO_RECORD_KEY = '5'
+use_ingame_push_to_talk_key = False
+ingame_push_to_talk_key = 'f'
 
 whisper_filter_list = ['you', 'thank you.', 'thanks for watching.']
 pipeline_elapsed_time = 0
@@ -134,19 +104,17 @@ def initialize_model():
 
 
 def start_voicevox_server():
-    global vboxapp
-    if (vboxapp != None):
+    global voicevox_server_started
+    if (voicevox_server_started):
         return
     # start voicevox server
-    vboxapp = vboxclient.voiceclient()  # Class「voiceclient」を利用可能にする
-    # vboxapp.vbox_dl()  # インストーラーをダウンロード&実行
-    vboxapp.app(exepass="VOICEVOX\\run.exe")
+    subprocess.Popen("VOICEVOX\\run.exe")
+    voicevox_server_started = True
 
 
 def initialize_speakers():
     global speakersResponse
-    global vboxapp
-    if (vboxapp == None):
+    if (not voicevox_server_started):
         start_voicevox_server()
     url = f"http://{VOICE_VOX_URL_LOCAL}:50021/speakers"
     while True:
@@ -277,7 +245,7 @@ def local_synthesize(text, speaker_id):
 def elevenlab_synthesize(message):
 
     global elevenlab_api_key
-    url = f'https://api.elevenlabs.io/v1/text-to-speech/MF3mGyEYCl7XYWbV9V6O'
+    url = f'https://api.elevenlabs.io/v1/text-to-speech/{elevenlab_voiceid}'
     headers = {
         'accept': 'audio/mpeg',
         'xi-api-key': elevenlab_api_key,
@@ -466,7 +434,7 @@ def start_TTS_pipeline(input_text):
         outputLanguage = 'en'
     else:
         outputLanguage = 'ja'
-    # print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
+    print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
     translate = inputLanguage != outputLanguage
     if (translate):
         step_timer.start()
@@ -492,8 +460,13 @@ def start_TTS_pipeline(input_text):
         f"Speech synthesized for text [{filtered_text}] ({step_timer.end()}s)")
     log_message(
         f'Total time: ({round(pipeline_elapsed_time + pipeline_timer.end(),2)}s)')
+    print(f"ingame_push_to_talk_key: {ingame_push_to_talk_key}")
+    global use_ingame_push_to_talk_key
+    if (use_ingame_push_to_talk_key and ingame_push_to_talk_key != ''):
+        keyboard.press(ingame_push_to_talk_key)
     PlayAudio()
-
+    if (use_ingame_push_to_talk_key and ingame_push_to_talk_key != ''):
+        keyboard.release(ingame_push_to_talk_key)
     global last_input_text
     last_input_text = input_text
     global last_input_language

@@ -2,6 +2,7 @@
 Audio/*
 Output/*
 .env
+.clean_env
 *.txt
 __*
 test.py
@@ -12,3 +13,5 @@ models--staka--fugumt-en-ja/
 *.wav
 !lore.txt
 config.json
+settings2.json
+settings.json

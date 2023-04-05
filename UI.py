@@ -1,3 +1,4 @@
+import json
 from threading import Thread
 import customtkinter
 import keyboard
@@ -13,6 +14,7 @@ import subLocal as SUB
 import translator
 import chatbot
 import streamChat
+import settings
 
 
 class Pages(Enum):
@@ -357,8 +359,20 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
             self.audio_drivers = self.get_audio_drivers()
             self.audio_driver_names = list(
                 map(lambda driver: driver['name'], self.audio_drivers))
+            # If the driver name in settings can be found, use the settings
+            driver_setting = ''
+            if (device_type == 'input'):
+                driver_setting = settings.get_settings('input_audio_driver')
+            elif (device_type == 'output'):
+                driver_setting = settings.get_settings('output_audio_driver')
+            self.default_driver = self.audio_driver_names[0]
+            print(
+                f'Looking for {driver_setting} in {self.audio_driver_names}.')
+            if driver_setting in self.audio_driver_names:
+                print("found")
+                self.default_driver = driver_setting
             self.audio_input_combobox_var = customtkinter.StringVar(
-                value=self.audio_driver_names[0])
+                value=self.default_driver)
             self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
                                                                   values=self.audio_driver_names,
                                                                   command=self.audio_driver_dropdown_callback,
@@ -372,7 +386,9 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
                 master=self, text=f'{device_type} device: ')
             audio_input_label.grid(
                 row=1, column=0, padx=10, pady=10, sticky='W')
-            self.audio_devices = self.get_audio_devices()
+
+            self.audio_devices = self.get_audio_devices(
+                self.driver_to_id(self.default_driver))
             self.filtered_devices = self.audio_devices
             if (self.device_type == 'input'):
                 self.filtered_devices = list(filter(
@@ -380,13 +396,25 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
             elif (self.device_type == 'output'):
                 self.filtered_devices = list(filter(
                     lambda device: device['max_output_channels'] > 0, self.audio_devices))
-            self.input_audio_device_names = list(
+            self.filtered_audio_device_names = list(
                 map(lambda device: device['name'], self.filtered_devices))
-            self.input_audio_device_names.insert(0, 'Default')
+            self.filtered_audio_device_names.insert(0, 'Default')
+            # If the device name in settings can be found, use the settings
+            device_setting = ''
+            if (device_type == 'input'):
+                device_setting = settings.get_settings('input_device')
+            elif (device_type == 'output'):
+                device_setting = settings.get_settings('output_device')
+            default_device = 'Default'
+            print(
+                f'Looking for {device_setting} in {self.filtered_audio_device_names}.')
+            if device_setting in self.filtered_audio_device_names:
+                print("found")
+                default_device = device_setting
             self.audio_input_combobox_var = customtkinter.StringVar(
-                value='Default')
+                value=default_device)
             self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
-                                                                  values=self.input_audio_device_names,
+                                                                  values=self.filtered_audio_device_names,
                                                                   command=self.audio_input_dropdown_callbakck,
                                                                   variable=self.audio_input_combobox_var)
             self.audio_input_combobox.grid(
@@ -422,6 +450,10 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
 
     def audio_input_dropdown_callbakck(self, choice):
         device_id = None
+        if (self.device_type == 'input'):
+            settings.save_settings('input_device', choice)
+        elif (self.device_type == 'output'):
+            settings.save_settings('output_device', choice)
         if (choice == 'Default'):
             device_id = None
         else:
@@ -448,6 +480,10 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
         for idx, driver in enumerate(self.audio_drivers):
             if driver['name'] == choice:
                 driver_idx = idx
+                if (self.device_type == 'input'):
+                    settings.save_settings('input_audio_driver', choice)
+                elif (self.device_type == 'output'):
+                    settings.save_settings('output_audio_driver', choice)
         print(f'Selected driver with idx: {driver_idx}')
         self.audio_devices = self.get_audio_devices(hostapi=driver_idx)
         self.filtered_devices = self.audio_devices
@@ -457,14 +493,14 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
         elif (self.device_type == 'output'):
             self.filtered_devices = list(filter(
                 lambda device: device['max_output_channels'] > 0, self.audio_devices))
-        self.input_audio_device_names = list(
+        self.filtered_audio_device_names = list(
             map(lambda device: device['name'], self.filtered_devices))
-        self.input_audio_device_names.insert(0, 'Default')
+        self.filtered_audio_device_names.insert(0, 'Default')
         self.audio_input_combobox_var = customtkinter.StringVar(
             value='Default')
-        self.audio_input_combobox.configure(values=self.input_audio_device_names,
+        self.audio_input_combobox.configure(values=self.filtered_audio_device_names,
                                             variable=self.audio_input_combobox_var)
-        print(self.input_audio_device_names)
+        print(self.filtered_audio_device_names)
         device_id = None
         print(f'Setting {self.device_type} audio device id to: {device_id}')
         self.set_command(device_id)
@@ -486,6 +522,12 @@ class AudiodeviceSelection(customtkinter.CTkFrame):
     def update_sound(self, indata, outdata, frames, time):
         self.audio_level = np.linalg.norm(indata)/10
         # print("|" * int(volume_norm))
+
+    def driver_to_id(self, driver_name):
+        global hostapis
+        for idx, driver in enumerate(hostapis):
+            if driver['name'] == driver_name:
+                return idx
 
 
 class SubtitlesFrame(customtkinter.CTkFrame):
@@ -788,93 +830,20 @@ class StreamFrame(customtkinter.CTkFrame):
         STTS.save_config('twitch_channel_name', streamChat.twitch_channel_name)
 
 
-class Page(customtkinter.CTkFrame):
-    def __init__(self, *args, **kwargs):
-        customtkinter.CTkFrame.__init__(self, *args, **kwargs)
-
-    def show(self):
-        self.lift()
-
-
-class AudioInputPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-        console = ConsoleFrame(master=self, width=500, corner_radius=8)
-        console.grid(row=0, column=1, padx=20, pady=20,
-                     sticky="nswe")
-        options = OptionsFrame(master=self)
-        options.grid(row=0, column=2, padx=20,
-                     pady=20, sticky="nswe")
-
-
-class TextInputPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-        textbox = TextBoxFrame(master=self, width=500, corner_radius=8)
-        textbox.grid(row=0, column=1, padx=20, pady=20,
-                     sticky="nswe")
-        options = OptionsFrame(master=self)
-        options.grid(row=0, column=2, padx=20,
-                     pady=20, sticky="nswe")
-
-
-class SubtitlesPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-        subtitles_frame = SubtitlesFrame(
-            master=self, width=500, corner_radius=8)
-        subtitles_frame.pack(padx=0, pady=0)
-
-
-class ChatPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-        chat_frame = ChatFrame(
-            master=self, width=500, corner_radius=8)
-        chat_frame.grid(row=0, column=1, padx=20, pady=20,
-                        sticky="nswe")
-        options = OptionsFrame(master=self, enable_input_language=False)
-        options.grid(row=0, column=2, padx=20,
-                     pady=20, sticky="nswe")
-
-
-class StreamPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
-        stream_frame = StreamFrame(
-            master=self, stream_type='youtube',  width=500, corner_radius=8)
-        stream_frame.grid(row=0, column=0, padx=20, pady=20,
-                          sticky="nswe")
-        stream_frame = StreamFrame(
-            master=self, stream_type='twitch',  width=500, corner_radius=8)
-        stream_frame.grid(row=0, column=1, padx=20, pady=20,
-                          sticky="nswe")
-        # options = OptionsFrame(master=self, enable_input_language=False)
-        # options.grid(row=0, column=2, padx=20,
-        #              pady=20, sticky="nswe")
-        self.chat_textbox = customtkinter.CTkTextbox(
-            self, width=200, height=200)
-        self.chat_textbox.grid(row=1, column=0, padx=20, pady=20, columnspan=2,
-                               sticky="nswe")
-        streamChat.logging_eventhandlers.append(self.log_message_on_console)
-
-    def log_message_on_console(self, message_text):
-        # insert at line 0 character 0
-        self.chat_textbox.configure(state="normal")
-        self.chat_textbox.insert(customtkinter.INSERT, message_text+'\n')
-        self.chat_textbox.configure(state="disabled")
-        self.chat_textbox.see("end")
-
-
-class SettingsPage(Page):
-    def __init__(self, *args, **kwargs):
-        Page.__init__(self, *args, **kwargs)
+class SettingsFrame(customtkinter.CTkScrollableFrame):
+    def __init__(self, master,  **kwargs):
+        super().__init__(master, **kwargs)
         mic_mode_label = customtkinter.CTkLabel(
             master=self, text='Microphone mode: ')
         mic_mode_label.grid(row=0, column=0, padx=10,
                             pady=10, sticky='W')
+        default_mic_mode = 'open mic'
+        mic_mode_setting = settings.get_settings('mic_mode')
+        if (mic_mode_setting in ['open mic', 'push to talk']):
+            default_mic_mode = mic_mode_setting
+        STTS.mic_mode = default_mic_mode
         self.mic_mode_combobox_var = customtkinter.StringVar(
-            value='open mic')
+            value=default_mic_mode)
         self.mic_mode_combobox = customtkinter.CTkComboBox(master=self,
                                                            values=[
                                                                'open mic', 'push to talk'],
@@ -882,8 +851,12 @@ class SettingsPage(Page):
                                                            variable=self.mic_mode_combobox_var)
         self.mic_mode_combobox.grid(
             row=0, column=1, padx=10, pady=10, sticky='W')
+        default_push_to_talk_key = '5'
+        push_to_talk_key_setting = settings.get_settings('push_to_talk_key')
+        if (push_to_talk_key_setting):
+            default_push_to_talk_key = push_to_talk_key_setting
         self.mic_key_label = customtkinter.CTkLabel(
-            master=self, text=f'push to talk key: {STTS.PUSH_TO_RECORD_KEY}')
+            master=self, text=f'push to talk key: {default_push_to_talk_key}')
         self.mic_key_label.grid(row=1, column=0,
                                 padx=10, pady=10, sticky='W')
         self.change_mic_key_Button = customtkinter.CTkButton(master=self,
@@ -971,6 +944,53 @@ class SettingsPage(Page):
         self.elevenlab_api_key_input.grid(
             row=7, column=1, padx=10, pady=10, sticky='W')
 
+        with open("elevenlabVoices.json", "r") as json_file:
+            elevenlab_voice_response = json.load(json_file)
+            self.elevenlab_voice_list = list(map(lambda voice: {
+                "name": voice['name'], "voice_id": voice['voice_id']},  elevenlab_voice_response['voices']))
+            self.elevenlab_voice_list_names = list(
+                map(lambda voice: voice['name'],  elevenlab_voice_response['voices']))
+            print(self.elevenlab_voice_list)
+        default_voice = "Elli"
+        elevenlab_voice_setting = settings.get_settings("elevenlab_voice_name")
+
+        if (elevenlab_voice_setting != ''):
+            default_voice = elevenlab_voice_setting
+        self.elevenlab_voice_combobox_var = customtkinter.StringVar(
+            value=default_voice)
+        self.audio_input_combobox = customtkinter.CTkComboBox(master=self,
+                                                              values=self.elevenlab_voice_list_names,
+                                                              command=self.elevenlab_voice_dropdown_callback,
+                                                              variable=self.elevenlab_voice_combobox_var)
+        self.audio_input_combobox.grid(
+            row=8, column=0, padx=10, pady=10, sticky='W')
+
+        default = False
+        setting = settings.get_settings(
+            'use_ingame_push_to_talk')
+        if (setting != ''):
+            default = setting
+        STTS.use_ingame_push_to_talk_key = default
+        self.use_ingame_push_to_talk_key_var = customtkinter.BooleanVar(
+            self, STTS.use_ingame_push_to_talk_key)
+        default = 'f'
+        setting = settings.get_settings('ingame_push_to_talk_key')
+        if (setting != ''):
+            default = setting
+        STTS.ingame_push_to_talk_key = default
+        self.ingame_push_to_talk_key_checkbox = customtkinter.CTkCheckBox(master=self, text=f'In-game push to talk key: {STTS.ingame_push_to_talk_key}', command=self.set_use_ingame_push_to_talk_key_var,
+                                                                          variable=self.use_ingame_push_to_talk_key_var, onvalue=True, offvalue=False)
+        self.ingame_push_to_talk_key_checkbox.grid(
+            row=9, column=0, padx=10, pady=10, sticky='W')
+
+        self.ingame_push_to_talk_key_Button = customtkinter.CTkButton(master=self,
+                                                                      text="change key",
+                                                                      command=self.change_ingame_push_to_talk_key,
+                                                                      fg_color='grey'
+                                                                      )
+        self.ingame_push_to_talk_key_Button.grid(
+            row=9, column=1, padx=10, pady=10, sticky='W')
+
     def input_device_index_update_callback(self, value):
         STTS.input_device_id = value
 
@@ -985,6 +1005,7 @@ class SettingsPage(Page):
 
     def mic_mode_dropdown_callbakck(self, choice):
         STTS.mic_mode = choice
+        settings.save_settings('mic_mode', choice)
 
     def set_use_deepl_var(self):
         translator.use_deepl = self.use_deepl_var.get()
@@ -1020,14 +1041,130 @@ class SettingsPage(Page):
         thread = Thread(target=self.listen_for_key)
         thread.start()
 
+    def change_ingame_push_to_talk_key(self):
+        thread = Thread(target=self.listen_for_key_ingame)
+        thread.start()
+
+    def set_use_ingame_push_to_talk_key_var(self):
+        print(
+            f'use_ingame_push_to_talk_key set to {self.use_ingame_push_to_talk_key_var.get()}')
+        STTS.use_ingame_push_to_talk_key = self.use_ingame_push_to_talk_key_var.get()
+        settings.save_settings("use_ingame_push_to_talk",
+                               STTS.use_ingame_push_to_talk_key)
+
     def listen_for_key(self):
         self.mic_key_label.configure(text='listening to keypress...')
         self.change_mic_key_Button.configure(fg_color='#fc7b5b')
         key = keyboard.read_key()
         STTS.PUSH_TO_RECORD_KEY = key
+        settings.save_settings('push_to_talk_key', value=key)
         self.mic_key_label.configure(
             text=f'push to talk key: {STTS.PUSH_TO_RECORD_KEY}')
         self.change_mic_key_Button.configure(fg_color='grey')
+
+    def listen_for_key_ingame(self):
+        self.ingame_push_to_talk_key_checkbox.configure(
+            text='listening to keypress...')
+        self.ingame_push_to_talk_key_Button.configure(fg_color='#fc7b5b')
+        key = keyboard.read_key()
+        STTS.ingame_push_to_talk_key = key
+        settings.save_settings("ingame_push_to_talk_key", key)
+        self.ingame_push_to_talk_key_checkbox.configure(
+            text=f'In-game push to talk key: {STTS.ingame_push_to_talk_key}')
+        self.ingame_push_to_talk_key_Button.configure(fg_color='grey')
+
+    def elevenlab_voice_dropdown_callback(self, choice):
+        for voice in self.elevenlab_voice_list:
+            if (voice['name'] == choice):
+                settings.save_settings("elevenlab_voice_name", choice)
+                STTS.elevenlab_voiceid = voice['voice_id']
+
+
+class Page(customtkinter.CTkFrame):
+    def __init__(self, *args, **kwargs):
+        customtkinter.CTkFrame.__init__(self, *args, **kwargs)
+
+    def show(self):
+        self.lift()
+
+
+class AudioInputPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        console = ConsoleFrame(master=self, width=500, corner_radius=8)
+        console.grid(row=0, column=1, padx=20, pady=20,
+                     sticky="nswe")
+        options = OptionsFrame(master=self)
+        options.grid(row=0, column=2, padx=20,
+                     pady=20, sticky="nswe")
+
+
+class TextInputPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        textbox = TextBoxFrame(master=self, width=500, corner_radius=8)
+        textbox.grid(row=0, column=1, padx=20, pady=20,
+                     sticky="nswe")
+        options = OptionsFrame(master=self)
+        options.grid(row=0, column=2, padx=20,
+                     pady=20, sticky="nswe")
+
+
+class SubtitlesPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        subtitles_frame = SubtitlesFrame(
+            master=self, width=500, corner_radius=8)
+        subtitles_frame.pack(padx=0, pady=0)
+
+
+class ChatPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        chat_frame = ChatFrame(
+            master=self, width=500, corner_radius=8)
+        chat_frame.grid(row=0, column=1, padx=20, pady=20,
+                        sticky="nswe")
+        options = OptionsFrame(master=self, enable_input_language=False)
+        options.grid(row=0, column=2, padx=20,
+                     pady=20, sticky="nswe")
+
+
+class StreamPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        stream_frame = StreamFrame(
+            master=self, stream_type='youtube',  width=500, corner_radius=8)
+        stream_frame.grid(row=0, column=0, padx=20, pady=20,
+                          sticky="nswe")
+        stream_frame = StreamFrame(
+            master=self, stream_type='twitch',  width=500, corner_radius=8)
+        stream_frame.grid(row=0, column=1, padx=20, pady=20,
+                          sticky="nswe")
+        # options = OptionsFrame(master=self, enable_input_language=False)
+        # options.grid(row=0, column=2, padx=20,
+        #              pady=20, sticky="nswe")
+        self.chat_textbox = customtkinter.CTkTextbox(
+            self, width=200, height=200)
+        self.chat_textbox.grid(row=1, column=0, padx=20, pady=20, columnspan=2,
+                               sticky="nswe")
+        streamChat.logging_eventhandlers.append(self.log_message_on_console)
+
+    def log_message_on_console(self, message_text):
+        # insert at line 0 character 0
+        self.chat_textbox.configure(state="normal")
+        self.chat_textbox.insert(customtkinter.INSERT, message_text+'\n')
+        self.chat_textbox.configure(state="disabled")
+        self.chat_textbox.see("end")
+
+
+class SettingsPage(Page):
+    def __init__(self, *args, **kwargs):
+        Page.__init__(self, *args, **kwargs)
+        settings_frame = SettingsFrame(
+            master=self,  width=620, height=440,  corner_radius=8)
+        settings_frame.grid(row=0, column=0, padx=0, pady=0,
+                            sticky="nswe")
 
 
 class App(customtkinter.CTk):
@@ -1123,7 +1260,7 @@ initialize_audio_devices()
 print("loading config... ")
 STTS.load_config()
 print("loading settings... ")
-settings = STTS.load_config()
+settings.load_settings()
 
 
 app = App()
