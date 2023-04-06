@@ -20,7 +20,7 @@ lore = lore.replace('\n', '')
 
 message_log = [
     {"role": "system", "content": lore},
-    # {"role": "user", "content": lore},
+    {"role": "user", "content": lore},
 ]
 
 logging_eventhandlers = []
@@ -42,8 +42,8 @@ def send_user_input(user_input):
     while total_characters > character_limit and len(message_log) > 1:
         print(
             f"total_characters {total_characters} exceed limit of {character_limit}, removing oldest message")
-        total_characters -= len(message_log[1]["content"])
-        message_log.pop(1)
+        total_characters -= len(message_log[2]["content"])
+        message_log.pop(2)
 
     response = None
     try:
