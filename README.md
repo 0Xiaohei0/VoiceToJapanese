@@ -45,6 +45,29 @@ https://discord.gg/EEcDgN9wJJ
 - If you provide an api key from deepl translate in settings. Deepl can be used instead of the offline model, which can provide better, more natural translations.
 - If you check the "Use voicevox on cloud" checkbox, Japanese audio syntheisis will happen on the cloud. If you do not provide an api key, the program will use the slow version of the API. If you provide a voicevox api key from https://voicevox.su-shiki.com/su-shikiapis/, the program will use the fast version of the API
 - To have the ai speak english instead of Japanese, you can check the "use elevenlab on cloud" checkbox and provide an API key from here: https://beta.elevenlabs.io/speech-synthesis
+- To run whisper on GPU, you need two things: [CUDA toolkit V11.7.1](https://developer.nvidia.com/cuda-11-7-1-download-archive?target_os=Windows&target_arch=x86_64), and [GPU pytorch](https://pytorch.org/get-started/locally/). For GPU pytorch, the website will give you a command like this: 
+```
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
+```
+You need to open a terminal in the files folder and run the following commands.
+```
+.venv\Scripts\activate.bat
+pip uninstall torch
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
+```
+Once you have them both installed, run
+
+```
+python
+```
+
+then
+
+```
+import torch
+torch.cuda.is_available()
+```
+if it returns True then whisper is running on GPU.
 # Inspiration
 
 This project was inspired by this video：
