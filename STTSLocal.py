@@ -21,7 +21,6 @@ import chatbot
 import json
 import streamChat
 import soundfile as sf
-import cutlet
 import settings
 
 
@@ -116,7 +115,6 @@ def start_voicevox_server():
 
 def initialize_speakers():
     global speakersResponse
-    katsu = cutlet.Cutlet()
     if (not voicevox_server_started):
         start_voicevox_server()
     url = f"http://{VOICE_VOX_URL_LOCAL}:50021/speakers"
@@ -129,12 +127,6 @@ def initialize_speakers():
             time.sleep(0.5)
     speakersResponse = response.json()
     print(speakersResponse)
-    if (settings.get_settings("romanji_speaker")):
-        for speaker in speakersResponse:
-            speaker['name'] = katsu.romaji(speaker['name'])
-            for style in speaker['styles']:
-                style['name'] = katsu.romaji(style['name'])
-        print(speakersResponse)
 
 
 def get_speaker_names():
