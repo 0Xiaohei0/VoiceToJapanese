@@ -15,6 +15,7 @@ import translator
 import chatbot
 import streamChat
 import settings
+import languages
 
 
 class Pages(Enum):
@@ -661,7 +662,7 @@ class OptionsFrame(customtkinter.CTkFrame):
 
         if (enable_input_language):
             self.default_input_anguage = "English"
-            self.input_anguage = ["English", "Japanese", "Chinese"]
+            self.input_anguage = languages.input_languages
 
             label_Input = customtkinter.CTkLabel(
                 master=self, text='Input Language: ')

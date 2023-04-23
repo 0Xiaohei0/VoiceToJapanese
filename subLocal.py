@@ -1,4 +1,3 @@
-import dict
 import whisper
 import speech_recognition as sr
 from translator import translate
@@ -10,11 +9,10 @@ from threading import Thread
 
 model = whisper.load_model("base")
 text_change_eventhandlers = []
-language_dict = dict.language_dict
 
 m_phrase_time_limit = 5
-input_language_name = 'Japanese'
-output_language_name = 'English'
+input_language_name = "Japanese"
+output_language_name = "English"
 is_running = False
 device_idx = None
 # obtain audio from the microphone
@@ -39,7 +37,7 @@ def stop():
 
 def check_gpu_status():
     status = torch.cuda.is_available()
-    print(f'Using GPU: {torch.cuda.is_available()}')
+    print(f"Using GPU: {torch.cuda.is_available()}")
     return status
 
 
@@ -48,22 +46,20 @@ def record_audio():
     global m_phrase_time_limit
     global device_idx
     with sr.Microphone(device_index=device_idx) as source:
-        if (device_idx == None):
+        if device_idx == None:
             print("Recording with default microphone...")
         else:
             print(f"Recording with deviceid: {device_idx}...")
-        audio = r.listen(source, timeout=None,
-                         phrase_time_limit=m_phrase_time_limit)
+        audio = r.listen(source, timeout=None, phrase_time_limit=m_phrase_time_limit)
         audio_queue.put(audio)
         print("Added audio to process queue.")
 
 
 def process_audio_queue():
-    if (not audio_queue.empty()):
+    if not audio_queue.empty():
         audio = audio_queue.get()
         try:
-            text = r.recognize_whisper(
-                audio, translate=True, language="japanese")
+            text = r.recognize_whisper(audio, translate=True, language="japanese")
             send_update_text_event(text)
         except sr.UnknownValueError:
             print("Whisper could not understand audio")

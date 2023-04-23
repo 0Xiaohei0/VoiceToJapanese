@@ -1,0 +1,15 @@
+input_languages = [
+    "Auto",
+    "English",
+    "Japanese",
+    "Chinese",
+    "French",
+    "Spanish",
+    "Russian",
+    "German",
+    "Indonesian",
+    "Hindi",
+    "Arabic",
+    "Bengali",
+    "Portuguese",
+]
