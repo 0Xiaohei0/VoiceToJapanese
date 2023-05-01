@@ -68,6 +68,10 @@ import torch
 torch.cuda.is_available()
 ```
 if it returns True then whisper is running on GPU.
+# FAQ
+### ModuleNotFoundError: No module named 'customtkinter'
+This means setup.bat did not run successfully. The most common reason is you are using python 3.11 instead of 3.10. If the error presists, you can try the .exe version here: https://github.com/0Xiaohei0/VoiceToJapanese/releases/tag/v1.2.3
+
 # Inspiration
 
 This project was inspired by this video：
