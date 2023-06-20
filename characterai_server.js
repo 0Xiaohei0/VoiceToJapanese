@@ -6,18 +6,6 @@ const CharacterAI = require("node_characterai");
 const characterAI = new CharacterAI();
 chat = null;
 
-(async () => {
-  await characterAI.authenticateAsGuest();
-
-  const characterId = "Lzx1xsokHaJNKf5EP20kNGcfSrXJM30Uhez8z9DaOXw"; // Yoimiya 0v0
-
-  const chat = await characterAI.createOrContinueChat(characterId);
-  const response = await chat.sendAndAwaitResponse("Do you know paimon?", true);
-
-  console.log(response);
-  // use response.text to use it in a string.
-})();
-
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
@@ -34,7 +22,7 @@ app.post("/authenticate", async (req, res) => {
 
 app.post("/setCharacter", async (req, res) => {
   try {
-    chat = await characterAI.createOrContinueChat(characterId);
+    chat = await characterAI.createOrContinueChat(req.query.characterId);
     res.status(200).send("Chat creation successful");
   } catch (error) {
     print(error);
@@ -42,12 +30,9 @@ app.post("/setCharacter", async (req, res) => {
   }
 });
 
-app.get("/sendChat", async (req, res) => {
+app.post("/sendChat", async (req, res) => {
   try {
-    const response = await chat.sendAndAwaitResponse(
-      "Do you know paimon?",
-      true
-    );
+    const response = await chat.sendAndAwaitResponse(req.query.text, true);
     res.status(200).send(response);
   } catch (error) {
     print(error);

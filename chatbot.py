@@ -1,18 +1,28 @@
+import json
 import os
 import re
+import time
 import traceback
 import openai
+import requests
 import STTSLocal as STTS
 
 # "GPT", "CHARACTER_AI"
-chat_model = "GPT"
+chat_model = "CHARACTER_AI"
 openai_api_key = ''
 AI_RESPONSE_FILENAME = 'ai-response.txt'
 character_limit = 3000
+lore = ''
+character_ai_endpoint = "http://127.0.0.1:3000"
+message_log = []
+
+logging_eventhandlers = []
+
 
 def initialize():
-    if(chat_model == "GPT"):
-        lore = ''
+    global chat_model
+    if (chat_model == "GPT"):
+        global lore, message_log
         try:
             with open('./lore.txt', 'r', encoding='utf-8') as file:
                 lore = file.read()
@@ -20,18 +30,50 @@ def initialize():
             print("error when reading lore.txt")
             print(traceback.format_exc())
         lore = lore.replace('\n', '')
-
         message_log = [
             {"role": "system", "content": lore},
-            # {"role": "user", "content": lore},
         ]
 
-        logging_eventhandlers = []
+    elif (chat_model == "CHARACTER_AI"):
+        log_message(f'Authenticating character-ai...')
+        url = f"{character_ai_endpoint}/authenticate"
+        print(f"Sending POST request to: {url}")
+        response = send_request_with_retry(url)
+        print(f'response: {response}')
+        characterai_set_character(
+            "RQrrOj-UNdEV2_PC5D03US-27MZ7EUtaRH_husjbRQA")
+
+
+def send_request_with_retry(url, max_retries=20, retry_delay=2):
+    retries = 0
+    while retries < max_retries:
+        try:
+            response = requests.request(
+                'POST', url)
+            # Process the response as needed
+            return response
+        except:
+            print("Waiting for character-ai server to start. Retrying in {} seconds...".format(
+                retry_delay))
+            time.sleep(retry_delay)
+            retries += 1
+    # If all retries fail, raise an exception or handle the error accordingly
+    raise Exception(
+        "Failed to establish a connection with the server after multiple attempts.")
+
+
+def characterai_set_character(characterid):
+    log_message(f'setting character_id to: {characterid}')
+    url = f"{character_ai_endpoint}/setCharacter?characterId={characterid}"
+    print(f"Sending POST request to: {url}")
+    response = requests.request(
+        "POST", url)
+    print(f'response: {response}')
 
 
 def send_user_input(user_input):
-    if(chat_model == "GPT"):
-        log_message(f'user: {user_input}')
+    if (chat_model == "GPT"):
+        log_message(f"GPTuser: {user_input}")
         global message_log
         global openai_api_key
         if (openai_api_key == ''):
@@ -41,7 +83,8 @@ def send_user_input(user_input):
         print(f"Sending: {user_input}")
         message_log.append({"role": "user", "content": user_input})
         print(message_log)
-        total_characters = sum(len(message['content']) for message in message_log)
+        total_characters = sum(len(message['content'])
+                               for message in message_log)
         print(f"total_characters: {total_characters}")
         while total_characters > character_limit and len(message_log) > 1:
             print(
@@ -68,10 +111,20 @@ def send_user_input(user_input):
             separated_text = separate_sentences(text_response)
             file.write(separated_text)
         STTS.start_TTS_pipeline(text_response)
-    elif(chat_model == "CHARACTER_AI"):
+    elif (chat_model == "CHARACTER_AI"):
         log_message(f'user: {user_input}')
-
-
+        url = f"{character_ai_endpoint}/sendChat?text={user_input}"
+        print(f"Sending POST request to: {character_ai_endpoint}")
+        response = requests.request(
+            "POST", url)
+        print(f'response: {response}')
+        response_json = json.loads(response.text)
+        text = response_json['text']
+        log_message(f'AI: {text}')
+        with open(AI_RESPONSE_FILENAME, "w", encoding="utf-8") as file:
+            separated_text = separate_sentences(text)
+            file.write(separated_text)
+        STTS.start_TTS_pipeline(text)
 
 
 def log_message(message_text):
@@ -95,5 +148,3 @@ def separate_sentences(text):
     result = '\n'.join(sentences)
 
     return result
-
-initialize()
