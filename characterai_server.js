@@ -15,7 +15,7 @@ app.post("/authenticate", async (req, res) => {
     await characterAI.authenticateAsGuest();
     res.status(200).send("Authentication successful");
   } catch (error) {
-    print(error);
+    console.log(error);
     res.status(500).send("Error occurred during authentication");
   }
 });
@@ -25,7 +25,7 @@ app.post("/setCharacter", async (req, res) => {
     chat = await characterAI.createOrContinueChat(req.query.characterId);
     res.status(200).send("Chat creation successful");
   } catch (error) {
-    print(error);
+    console.log(error);
     res.status(500).send("Error occurred during chat creation");
   }
 });
@@ -35,7 +35,7 @@ app.post("/sendChat", async (req, res) => {
     const response = await chat.sendAndAwaitResponse(req.query.text, true);
     res.status(200).send(response);
   } catch (error) {
-    print(error);
+    console.log(error);
     res.status(500).send("Error sending chat");
   }
 });

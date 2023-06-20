@@ -8,7 +8,7 @@ import requests
 import STTSLocal as STTS
 
 # "GPT", "CHARACTER_AI"
-chat_model = "CHARACTER_AI"
+chat_model = "GPT"
 openai_api_key = ''
 AI_RESPONSE_FILENAME = 'ai-response.txt'
 character_limit = 3000
@@ -38,20 +38,32 @@ def initialize():
         log_message(f'Authenticating character-ai...')
         url = f"{character_ai_endpoint}/authenticate"
         print(f"Sending POST request to: {url}")
-        response = send_request_with_retry(url)
-        print(f'response: {response}')
-        characterai_set_character(
-            "RQrrOj-UNdEV2_PC5D03US-27MZ7EUtaRH_husjbRQA")
+        try:
+            response = send_request_with_retry(url)
+            print(f'response: {response}')
+            characterai_set_character(
+                "RQrrOj-UNdEV2_PC5D03US-27MZ7EUtaRH_husjbRQA")
+        except requests.exceptions.Timeout:
+            log_message(
+                "Request timed out. May be caused by a queue at character-ai servers.")
 
 
-def send_request_with_retry(url, max_retries=20, retry_delay=2):
+def change_chat_model(model):
+    global chat_model
+    chat_model = model
+    initialize()
+
+
+def send_request_with_retry(url, max_retries=20, retry_delay=2, timeout=5):
     retries = 0
     while retries < max_retries:
         try:
             response = requests.request(
-                'POST', url)
+                'POST', url, timeout=timeout)
             # Process the response as needed
             return response
+        except requests.exceptions.Timeout:
+            raise requests.exceptions.Timeout
         except:
             print("Waiting for character-ai server to start. Retrying in {} seconds...".format(
                 retry_delay))

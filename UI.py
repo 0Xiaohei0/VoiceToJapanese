@@ -916,10 +916,29 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         self.voicevox_api_key_input.grid(
             row=5, column=1, padx=10, pady=10, sticky='W')
 
+        chat_model_label = customtkinter.CTkLabel(
+            master=self, text='Chat model: ')
+        chat_model_label.grid(row=6, column=0, padx=10,
+                              pady=10, sticky='W')
+        default_chat_model = 'GPT'
+        chat_model_setting = settings.get_settings('chat_model')
+        if (chat_model_setting in ['GPT', 'CHARACTER_AI']):
+            default_chat_model = chat_model_setting
+        chatbot.change_chat_model(default_chat_model)
+        self.chat_model_combobox_var = customtkinter.StringVar(
+            value=default_chat_model)
+        self.chat_model_combobox = customtkinter.CTkComboBox(master=self,
+                                                             values=[
+                                                                 'GPT', 'CHARACTER_AI'],
+                                                             command=self.chat_model_dropdown_callback,
+                                                             variable=self.chat_model_combobox_var)
+        self.chat_model_combobox.grid(
+            row=6, column=1, padx=10, pady=10, sticky='W')
+
         self.label_openai_api_key = customtkinter.CTkLabel(
             master=self, text=f'Open-AI API key(required to chat): ')
         self.label_openai_api_key.grid(
-            row=6, column=0, padx=10, pady=10, sticky='W')
+            row=7, column=0, padx=10, pady=10, sticky='W')
         self.openai_api_key_var = customtkinter.StringVar(
             self, chatbot.openai_api_key)
         self.openai_api_key_var.trace_add(
@@ -927,14 +946,14 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         self.openai_api_key_input = customtkinter.CTkEntry(
             master=self, textvariable=self.openai_api_key_var)
         self.openai_api_key_input.grid(
-            row=6, column=1, padx=10, pady=10, sticky='W')
+            row=7, column=1, padx=10, pady=10, sticky='W')
 
         self.use_elevenlab_var = customtkinter.BooleanVar(
             self, STTS.use_elevenlab)
         use_elevenlab_checkbox = customtkinter.CTkCheckBox(master=self, text="Use elevenlab on cloud (api key required)", command=self.set_use_elevenlab_var,
                                                            variable=self.use_elevenlab_var, onvalue=True, offvalue=False)
         use_elevenlab_checkbox.grid(
-            row=7, column=0, padx=10, pady=10, sticky='W')
+            row=8, column=0, padx=10, pady=10, sticky='W')
         self.elevenlab_api_key_var = customtkinter.StringVar(
             self, STTS.voice_vox_api_key)
         self.elevenlab_api_key_var.trace_add(
@@ -942,7 +961,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         self.elevenlab_api_key_input = customtkinter.CTkEntry(
             master=self, textvariable=self.elevenlab_api_key_var)
         self.elevenlab_api_key_input.grid(
-            row=7, column=1, padx=10, pady=10, sticky='W')
+            row=8, column=1, padx=10, pady=10, sticky='W')
 
         with open("elevenlabVoices.json", "r") as json_file:
             elevenlab_voice_response = json.load(json_file)
@@ -963,7 +982,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
                                                               command=self.elevenlab_voice_dropdown_callback,
                                                               variable=self.elevenlab_voice_combobox_var)
         self.audio_input_combobox.grid(
-            row=8, column=0, padx=10, pady=10, sticky='W')
+            row=9, column=0, padx=10, pady=10, sticky='W')
 
         default = False
         setting = settings.get_settings(
@@ -981,7 +1000,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         self.ingame_push_to_talk_key_checkbox = customtkinter.CTkCheckBox(master=self, text=f'In-game push to talk key: {STTS.ingame_push_to_talk_key}', command=self.set_use_ingame_push_to_talk_key_var,
                                                                           variable=self.use_ingame_push_to_talk_key_var, onvalue=True, offvalue=False)
         self.ingame_push_to_talk_key_checkbox.grid(
-            row=9, column=0, padx=10, pady=10, sticky='W')
+            row=10, column=0, padx=10, pady=10, sticky='W')
 
         self.ingame_push_to_talk_key_Button = customtkinter.CTkButton(master=self,
                                                                       text="change key",
@@ -989,7 +1008,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
                                                                       fg_color='grey'
                                                                       )
         self.ingame_push_to_talk_key_Button.grid(
-            row=9, column=1, padx=10, pady=10, sticky='W')
+            row=10, column=1, padx=10, pady=10, sticky='W')
 
     def input_device_index_update_callback(self, value):
         STTS.input_device_id = value
@@ -1006,6 +1025,10 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
     def mic_mode_dropdown_callbakck(self, choice):
         STTS.mic_mode = choice
         settings.save_settings('mic_mode', choice)
+
+    def chat_model_dropdown_callback(self, choice):
+        chatbot.change_chat_model(choice)
+        settings.save_settings('chat_model', choice)
 
     def set_use_deepl_var(self):
         translator.use_deepl = self.use_deepl_var.get()
