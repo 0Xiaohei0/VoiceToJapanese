@@ -97,6 +97,7 @@ pipeline_timer = Timer()
 step_timer = Timer()
 model = None
 
+characterai_server_file_path = 'characterai_server.js'
 
 def initialize_model():
     global model
@@ -110,6 +111,29 @@ def start_voicevox_server():
     # start voicevox server
     subprocess.Popen("VOICEVOX\\run.exe")
     voicevox_server_started = True
+
+def start_characterai_server():
+    global characterai_server_file_path
+    server_thread = Thread(target=run_javascript_file, args=(characterai_server_file_path,))
+    server_thread.start()
+
+def capture_output(process):
+    for line in process.stdout:
+        print(f"CHARACTER_AI_SERVER: {line.decode().strip()}")
+
+    for line in process.stderr:
+        print(f"CHARACTER_AI_SERVER: {line.decode().strip()}")
+        
+def run_javascript_file(file_path):
+    try:
+        process = subprocess.Popen(['node', file_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output_thread = Thread(target=capture_output, args=(process,))
+        output_thread.start()
+        process.wait()
+        output_thread.join()
+    except FileNotFoundError:
+        print ("Node.js is not installed or the file path is invalid.")
+
 
 
 def initialize_speakers():

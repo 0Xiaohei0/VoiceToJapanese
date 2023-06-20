@@ -1251,6 +1251,8 @@ thread.start()
 
 print("Starting voicevox server...")
 STTS.start_voicevox_server()
+print("Starting character ai server...")
+STTS.start_characterai_server()
 print("Initializing tts model...")
 STTS.initialize_model()
 print("Initializing translator...")
