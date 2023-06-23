@@ -15,8 +15,10 @@ character_limit = 3000
 lore = ''
 character_ai_endpoint = "http://127.0.0.1:3000"
 message_log = []
-
+character_id = "scsnOOq2jDNHqRpA9Inuckrb5HHqyQZgtxPFQyPJ-eQ"
 logging_eventhandlers = []
+use_character_ai_token = True
+character_ai_token = ""
 
 
 def initialize():
@@ -35,14 +37,22 @@ def initialize():
         ]
 
     elif (chat_model == "CHARACTER_AI"):
-        log_message(f'Authenticating character-ai...')
-        url = f"{character_ai_endpoint}/authenticate"
+        url = ""
+        global use_character_ai_token, character_ai_token
+        if (use_character_ai_token):
+            log_message(
+                f'Authenticating character-ai with token:{character_ai_token}...')
+            url = f"{character_ai_endpoint}/authenticateToken?token={character_ai_token}"
+        else:
+            log_message(f'Authenticating character-ai as guest...')
+            url = f"{character_ai_endpoint}/authenticate"
         print(f"Sending POST request to: {url}")
         try:
             response = send_request_with_retry(url)
             print(f'response: {response}')
+            global character_id
             characterai_set_character(
-                "RQrrOj-UNdEV2_PC5D03US-27MZ7EUtaRH_husjbRQA")
+                character_id)
         except requests.exceptions.Timeout:
             log_message(
                 "Request timed out. May be caused by a queue at character-ai servers.")

@@ -20,6 +20,17 @@ app.post("/authenticate", async (req, res) => {
   }
 });
 
+app.post("/authenticateToken", async (req, res) => {
+  try {
+    if (characterAI.isAuthenticated()) characterAI.unauthenticate();
+    await characterAI.authenticateWithToken(req.query.token);
+    res.status(200).send("Authentication successful");
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Error occurred during authentication");
+  }
+});
+
 app.post("/setCharacter", async (req, res) => {
   try {
     chat = await characterAI.createOrContinueChat(req.query.characterId);

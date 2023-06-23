@@ -43,6 +43,8 @@ def load_config():
             streamChat.twitch_access_token = data['twitch_access_token']
             streamChat.twitch_channel_name = data['twitch_channel_name']
             streamChat.youtube_video_id = data['youtube_video_id']
+            chatbot.use_character_ai_token = data['use_character_ai_token']
+            chatbot.character_ai_token = data['character_ai_token']
 
             if (elevenlab_api_key == ''):
                 elevenlab_api_key = os.getenv("ELEVENLAB_API_KEY")
