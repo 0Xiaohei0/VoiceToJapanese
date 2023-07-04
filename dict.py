@@ -1,6 +1,7 @@
 language_dict = {'English': "en-US",
                  "Japanese": "ja-JP",
-                 "Chinese": "zh-CN"}
+                 "Chinese": "zh-CN",
+                 "Auto": "en-US"}
 
 azure_language_dict = {'English': "en",
                        "Japanese": "ja",

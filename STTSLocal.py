@@ -92,7 +92,7 @@ PUSH_TO_RECORD_KEY = '5'
 use_ingame_push_to_talk_key = False
 ingame_push_to_talk_key = 'f'
 
-whisper_filter_list = ['you', 'thank you.', 'thanks for watching.']
+whisper_filter_list = ['you', 'thank you.', 'thanks for watching.', "Thank you for watching."]
 pipeline_elapsed_time = 0
 TTS_pipeline_start_time = 0
 pipeline_timer = Timer()
@@ -100,6 +100,8 @@ step_timer = Timer()
 model = None
 
 characterai_server_file_path = 'characterai_server.js'
+
+ambience_adjusted = False
 
 def initialize_model():
     global model
@@ -205,9 +207,10 @@ def start_record_auto_chat():
 
 
 def stop_record_auto():
-    global auto_recording
+    global auto_recording, ambience_adjusted
     auto_recording = False
     log_message("Recording Stopped")
+    ambience_adjusted = False
 
 
 def cloud_synthesize(text, speaker_id, api_key=''):
@@ -393,10 +396,12 @@ def start_STTS_pipeline(use_chatbot=False):
         # record audio
         # obtain audio from the microphone
         r = sr.Recognizer()
-        global input_device_id
+        global input_device_id, ambience_adjusted
         with sr.Microphone(device_index=input_device_id) as source:
-            # log_message("Adjusting for ambient noise...")
-            # r.adjust_for_ambient_noise(source)
+            if (not ambience_adjusted):
+                log_message("Adjusting for ambient noise...")
+                r.adjust_for_ambient_noise(source)
+                ambience_adjusted = True
             log_message("Say something!")
             audio = r.listen(source)
 
@@ -423,8 +428,11 @@ def start_STTS_pipeline(use_chatbot=False):
         audio = whisper.load_audio(MIC_OUTPUT_FILENAME)
         audio = whisper.pad_or_trim(audio)
         mel = whisper.log_mel_spectrogram(audio).to(model.device)
-        options = whisper.DecodingOptions(
-            language=input_language_name.lower(), without_timestamps=True, fp16=False if model.device == 'cpu' else None)
+        if(input_language_name == "Auto"):
+            lanuguage = None
+        else: lanuguage = input_language_name.lower()
+        options = whisper.DecodingOptions(task='transcribe' if input_language_name == "Japanese" else 'translate',
+            language=lanuguage, without_timestamps=True, fp16=False if model.device == 'cpu' else None)
         result = whisper.decode(model, mel, options)
         input_text = result.text
     except sr.UnknownValueError:
@@ -455,11 +463,15 @@ def start_TTS_pipeline(input_text):
     global speaker_id
     global pipeline_elapsed_time
     pipeline_timer.start()
-    inputLanguage = language_dict[input_language_name][:2]
     if (use_elevenlab):
         outputLanguage = 'en'
     else:
         outputLanguage = 'ja'
+    global input_language_name
+    if (input_language_name == "Japanese"):
+        inputLanguage = 'ja'
+    else: 
+        inputLanguage = 'en'
     print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
     translate = inputLanguage != outputLanguage
     if (translate):

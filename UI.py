@@ -661,7 +661,8 @@ class OptionsFrame(customtkinter.CTkFrame):
 
         if (enable_input_language):
             self.default_input_anguage = "English"
-            self.input_anguage = ["English", "Japanese", "Chinese"]
+            self.input_anguage = ["English", "Auto", "Japanese",
+                                  "Chinese", "Hindi", "Spanish", "French", "Arabic", "Bengali", "Russian", "Portuguese", "Indonesian"]
 
             label_Input = customtkinter.CTkLabel(
                 master=self, text='Input Language: ')
@@ -1289,17 +1290,6 @@ def optionmenu_callback(choice):
     print("optionmenu dropdown clicked:", choice)
 
 
-def print_sound(indata, outdata, frames, time, status):
-    global audio_level
-    audio_level = np.linalg.norm(indata)/10
-    # print("|" * int(volume_norm))
-
-
-def listen_to_mic():
-    with sd.Stream(callback=print_sound):
-        sd.sleep(10000000)
-
-
 def initialize_audio_devices():
     global hostapis
     hostapis = sd.query_hostapis()
@@ -1309,8 +1299,6 @@ def initialize_audio_devices():
 
 hostapis = None
 audio_devices = None
-thread = Thread(target=listen_to_mic)
-thread.start()
 
 print("Starting voicevox server...")
 STTS.start_voicevox_server()
