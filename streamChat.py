@@ -19,6 +19,7 @@ twitch_access_token = ''
 twitch_channel_name = ''
 
 logging_eventhandlers = []
+excluded_users_list = []
 
 
 def read_chat_youtube():
@@ -41,10 +42,11 @@ def read_chat_loop(chat):
     global read_chat_youtube_thread_running
     while read_chat_youtube_thread_running and chat.is_alive():
         for c in chat.get().sync_items():
-            log_message(f"{c.datetime} [{c.author.name}]- {c.message}")
-            chatbot.send_user_input(c.message)
-            # print(response)
-            time.sleep(1)
+            if c.author.name not in excluded_users_list:
+                log_message(f"{c.datetime} [{c.author.name}]- {c.message}")
+                chatbot.send_user_input(c.message)
+                # print(response)
+                time.sleep(1)
     log_message("Chat fetching ended")
 
 
@@ -61,6 +63,23 @@ class Bot(commands.Bot):
         # Initialise our Bot with our access token, prefix and a list of channels to join on boot...
         super().__init__(token=token,
                          prefix='?', initial_channels=initial_channels)
+        global excluded_users_list
+        # Function to reload the excluded users from the file
+        reload_thread = Thread(target=self.reload_excluded_users)
+        reload_thread.start()
+
+    def reload_excluded_users(self):
+        while True:
+            try:
+                global excluded_users_list
+                file_path = "excluded_users.txt"
+                with open(file_path, "r") as file:
+                    content = file.read()
+                    excluded_users_list = content.split("\n")
+            except:
+                print(f"Unable to load {file_path}.")
+                print(traceback.format_exc())
+            time.sleep(10)  # Sleep for 30 seconds before reloading
 
     async def event_ready(self):
         # We are logged in and ready to chat and use commands...
@@ -74,9 +93,10 @@ class Bot(commands.Bot):
             return
 
         # Print the contents of our message to console...
-        print(message)
-        log_message(message.content)
-        chatbot.send_user_input(message.content)
+        if message.author.name not in excluded_users_list:
+            print(message)
+            log_message(message.content)
+            chatbot.send_user_input(message.content)
 
         # Since we have commands and are overriding the default `event_message`
         # We must let the bot know we want to handle and invoke our commands...
