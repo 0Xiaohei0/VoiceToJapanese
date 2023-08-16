@@ -17,7 +17,7 @@ character_ai_endpoint = "http://127.0.0.1:3000"
 message_log = []
 character_id = "scsnOOq2jDNHqRpA9Inuckrb5HHqyQZgtxPFQyPJ-eQ"
 logging_eventhandlers = []
-use_character_ai_token = True
+use_character_ai_token = False
 character_ai_token = ""
 
 

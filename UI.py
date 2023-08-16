@@ -980,7 +980,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         use_elevenlab_checkbox.grid(
             row=10, column=0, padx=10, pady=10, sticky='W')
         self.elevenlab_api_key_var = customtkinter.StringVar(
-            self, STTS.voice_vox_api_key)
+            self, STTS.elevenlab_api_key)
         self.elevenlab_api_key_var.trace_add(
             'write', self.update_elevenlab_api_key)
         self.elevenlab_api_key_input = customtkinter.CTkEntry(
