@@ -2,6 +2,7 @@ import traceback
 from transformers import pipeline
 import requests
 import json
+import pysbd
 
 use_deepl = False
 deepl_api_key = ''
@@ -46,7 +47,11 @@ def translate(text, from_code, to_code):
             if (fugu_translator == None):
                 fugu_translator = pipeline(
                     'translation', model='./models--staka--fugumt-en-ja/snapshots/2d6da1c7352386e12ddd46ce3d0bbb2310200fcc')
-            return fugu_translator(text)[0]['translation_text']
+            seg_en = pysbd.Segmenter(language="en", clean=False)
+            data = fugu_translator(seg_en.segment(text))
+            concatenated_text = ''.join(
+                item['translation_text'] for item in data)
+            return concatenated_text
         else:
             print(
                 f"no avaliable model to translate from{from_code} to {to_code}")

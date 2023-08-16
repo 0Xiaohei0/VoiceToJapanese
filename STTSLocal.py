@@ -21,6 +21,7 @@ import chatbot
 import json
 import streamChat
 import soundfile as sf
+import re
 
 
 def load_config():
@@ -92,7 +93,8 @@ PUSH_TO_RECORD_KEY = '5'
 use_ingame_push_to_talk_key = False
 ingame_push_to_talk_key = 'f'
 
-whisper_filter_list = ['you', 'thank you.', 'thanks for watching.', "Thank you for watching."]
+whisper_filter_list = ['you', 'thank you.',
+                       'thanks for watching.', "Thank you for watching."]
 pipeline_elapsed_time = 0
 TTS_pipeline_start_time = 0
 pipeline_timer = Timer()
@@ -102,6 +104,7 @@ model = None
 characterai_server_file_path = 'characterai_server.js'
 
 ambience_adjusted = False
+
 
 def initialize_model():
     global model
@@ -116,10 +119,13 @@ def start_voicevox_server():
     subprocess.Popen("VOICEVOX\\run.exe")
     voicevox_server_started = True
 
+
 def start_characterai_server():
     global characterai_server_file_path
-    server_thread = Thread(target=run_javascript_file, args=(characterai_server_file_path,))
+    server_thread = Thread(target=run_javascript_file,
+                           args=(characterai_server_file_path,))
     server_thread.start()
+
 
 def capture_output(process):
     for line in process.stdout:
@@ -127,17 +133,18 @@ def capture_output(process):
 
     for line in process.stderr:
         print(f"CHARACTER_AI_SERVER: {line.decode().strip()}")
-        
+
+
 def run_javascript_file(file_path):
     try:
-        process = subprocess.Popen(['node', file_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(
+            ['node', file_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output_thread = Thread(target=capture_output, args=(process,))
         output_thread.start()
         process.wait()
         output_thread.join()
     except FileNotFoundError:
-        print ("Node.js is not installed or the file path is invalid.")
-
+        print("Node.js is not installed or the file path is invalid.")
 
 
 def initialize_speakers():
@@ -428,11 +435,12 @@ def start_STTS_pipeline(use_chatbot=False):
         audio = whisper.load_audio(MIC_OUTPUT_FILENAME)
         audio = whisper.pad_or_trim(audio)
         mel = whisper.log_mel_spectrogram(audio).to(model.device)
-        if(input_language_name == "Auto"):
+        if (input_language_name == "Auto"):
             lanuguage = None
-        else: lanuguage = input_language_name.lower()
+        else:
+            lanuguage = input_language_name.lower()
         options = whisper.DecodingOptions(task='transcribe' if input_language_name == "Japanese" else 'translate',
-            language=lanuguage, without_timestamps=True, fp16=False if model.device == 'cpu' else None)
+                                          language=lanuguage, without_timestamps=True, fp16=False if model.device == 'cpu' else None)
         result = whisper.decode(model, mel, options)
         input_text = result.text
     except sr.UnknownValueError:
@@ -462,6 +470,13 @@ def start_TTS_pipeline(input_text):
     global voice_name
     global speaker_id
     global pipeline_elapsed_time
+    # remove text between astrisks
+    input_text = re.sub(r'\*.*?\*', '', input_text)
+    # remove emojis
+    input_text = re.sub(r'[^\w\s,.!?]', '', input_text)
+    # Remove text between brackets
+    input_text = re.sub(r'\(.*?\)', '', input_text)
+    print(f"filtered input: {input_text}")
     pipeline_timer.start()
     if (use_elevenlab):
         outputLanguage = 'en'
@@ -470,7 +485,7 @@ def start_TTS_pipeline(input_text):
     global input_language_name
     if (input_language_name == "Japanese"):
         inputLanguage = 'ja'
-    else: 
+    else:
         inputLanguage = 'en'
     print(f"inputLanguage: {inputLanguage}, outputLanguage: {outputLanguage}")
     translate = inputLanguage != outputLanguage

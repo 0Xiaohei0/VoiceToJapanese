@@ -923,14 +923,14 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
                               pady=10, sticky='W')
         default_chat_model = 'GPT'
         chat_model_setting = settings.get_settings('chat_model')
-        if (chat_model_setting in ['GPT', 'CHARACTER_AI']):
+        if (chat_model_setting in ['GPT', 'CHARACTER_AI', 'oogabooga_webui']):
             default_chat_model = chat_model_setting
         chatbot.change_chat_model(default_chat_model)
         self.chat_model_combobox_var = customtkinter.StringVar(
             value=default_chat_model)
         self.chat_model_combobox = customtkinter.CTkComboBox(master=self,
                                                              values=[
-                                                                 'GPT', 'CHARACTER_AI'],
+                                                                 'GPT', 'CHARACTER_AI', 'oogabooga_webui'],
                                                              command=self.chat_model_dropdown_callback,
                                                              variable=self.chat_model_combobox_var)
         self.chat_model_combobox.grid(
