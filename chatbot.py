@@ -24,7 +24,7 @@ history_webui = {'internal': [], 'visible': []}
 
 def initialize():
     global chat_model
-    if (chat_model == "GPT"):
+    if (chat_model == "GPT" or chat_model == "GPT_proxy(china only)"):
         global lore, message_log
         try:
             with open('./lore.txt', 'r', encoding='utf-8') as file:
@@ -95,10 +95,11 @@ def characterai_set_character(characterid):
 
 
 def send_user_input(user_input):
+    global message_log
+    global openai_api_key
     if (chat_model == "GPT"):
         log_message(f"GPTuser: {user_input}")
-        global message_log
-        global openai_api_key
+        
         if (openai_api_key == ''):
             openai_api_key = os.getenv("OPENAI_API_KEY")
 
@@ -121,6 +122,47 @@ def send_user_input(user_input):
                 model="gpt-3.5-turbo",
                 messages=message_log
             )
+        except Exception:
+            log_message("Error when loading api key from environment variable")
+            log_message(
+                "You need an API key from https://platform.openai.com/ stored in an environment variable with name \"OPENAI_API_KEY\" to use the chat feature")
+            print(traceback.format_exc())
+            return
+        text_response = response['choices'][0]['message']['content']
+        message_log.append({"role": "assistant", "content": text_response})
+        log_message(f'AI: {text_response}')
+        with open(AI_RESPONSE_FILENAME, "w", encoding="utf-8") as file:
+            separated_text = separate_sentences(text_response)
+            file.write(separated_text)
+        STTS.start_TTS_pipeline(text_response)
+    elif (chat_model == "GPT_proxy(china only)"):
+        log_message(f"GPTuser: {user_input}")
+        if (openai_api_key == ''):
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+
+        openai.api_key = openai_api_key
+        print(f"Sending: {user_input}")
+        message_log.append({"role": "user", "content": user_input})
+        print(message_log)
+        total_characters = sum(len(message['content'])
+                               for message in message_log)
+        print(f"total_characters: {total_characters}")
+        while total_characters > character_limit and len(message_log) > 1:
+            print(
+                f"total_characters {total_characters} exceed limit of {character_limit}, removing oldest message")
+            total_characters -= len(message_log[1]["content"])
+            message_log.pop(1)
+
+        response = None
+        try:
+            # response = openai.ChatCompletion.create(
+            #     model="gpt-3.5-turbo",
+            #     messages=message_log
+            # )
+            response = requests.post("https://api.openai-proxy.com/v1/chat/completions",
+                                     json={"model": "gpt-3.5-turbo", "messages": message_log},
+                                     headers={"Authorization": "Bearer " + openai_api_key},verify=False)
+            response = response.json()
         except Exception:
             log_message("Error when loading api key from environment variable")
             log_message(
