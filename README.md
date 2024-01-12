@@ -69,8 +69,16 @@ torch.cuda.is_available()
 ```
 if it returns True then whisper is running on GPU.
 # FAQ
-### ModuleNotFoundError: No module named 'customtkinter'
-This means setup.bat did not run successfully. The most common reason is you are using python 3.11 instead of 3.10. If the error presists, you can try the .exe version here: https://github.com/0Xiaohei0/VoiceToJapanese/releases/tag/v1.2.3
+### Cannot find module “customtkinter”: ### 
+Try the exe version here: https://github.com/0Xiaohei0/VoiceToJapanese/releases/download/v1.2.3/VoiceToJapanese.v1.2.3-exe.zip It requires no setup, just unzip and run the exe file inside. Anti virus may complain about exe files, just click run anyway. 
+If you do not trust the exe file, or want to modify the code, you need to troubleshoot why the setup script failed. This error message means setup.py didn't install the required libraries successfully. Run setup.py and check the console for error message. Most common error is using incorrect python version which should be 3.10. 
+ ### Error loading api key from environment variable, you need an api key from open ai:  ### 
+Check the console for actual error message, if you see "exceeded current quota", it usually means your openai free credits expired. Solution is to upgrade to paid plan, or create new accounts to try and get new free credit.
+ ### Input: you ### 
+The transcriber often transcribes silence into "you". Make sure you selected the correct input device in settings and check if the mic meter is moving.
+ ### custom elevenlabs voices ### 
+You need to go here https://elevenlabs.io/docs/api-reference/get-voices
+Select header under GET voices and paste your API key, download the result as a file. Rename it to elevenlabVoices.json and replace the elevenlabVoices.json in the VoicetoJapanese folder. 
 
 # Inspiration
 
