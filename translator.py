@@ -53,8 +53,7 @@ def translate(text, from_code, to_code):
                 item['translation_text'] for item in data)
             return concatenated_text
         else:
-            print(
-                f"no avaliable model to translate from{from_code} to {to_code}")
+            print(f"No avaliable model to translate from{from_code} to {to_code}")
             return ''
     # DEEPL_TOKEN = os.environ.get("translation-service-api-token")
     # # Send text to translation service
