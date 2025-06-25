@@ -1,11 +1,14 @@
 import json
-import os
 import re
-import time
+import asyncio
 import traceback
-import openai
+from openai import OpenAI # Updating Client Method
 import requests
+import queue
+import threading
 import STTSLocal as STTS
+from PyCharacterAI import Client
+from PyCharacterAI.exceptions import SessionClosedError
 
 # "GPT", "CHARACTER_AI"
 chat_model = "GPT"
@@ -13,17 +16,28 @@ openai_api_key = ''
 AI_RESPONSE_FILENAME = 'ai-response.txt'
 character_limit = 3000
 lore = ''
-character_ai_endpoint = "http://127.0.0.1:3000"
 message_log = []
 character_id = "scsnOOq2jDNHqRpA9Inuckrb5HHqyQZgtxPFQyPJ-eQ"
 logging_eventhandlers = []
 use_character_ai_token = False
 character_ai_token = ""
 history_webui = {'internal': [], 'visible': []}
+chat = None
+message_queue = queue.Queue()
+
+main_asyncio_loop = asyncio.new_event_loop()
+asyncio.set_event_loop(main_asyncio_loop)
+
+def run_event_loop(loop): # Run async thread
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+event_loop_thread = threading.Thread(target=run_event_loop, args=(main_asyncio_loop,), daemon=True)
+event_loop_thread.start()
 
 
-def initialize():
-    global chat_model
+async def initialize():
+    global chat_model, chat, client, character_id, character_ai_token
     if (chat_model == "GPT" or chat_model == "GPT_proxy(china only)"):
         global lore, message_log
         try:
@@ -38,72 +52,39 @@ def initialize():
         ]
 
     elif (chat_model == "CHARACTER_AI"):
-        url = ""
-        global use_character_ai_token, character_ai_token
-        if (use_character_ai_token):
-            log_message(
-                f'Authenticating character-ai with token:{character_ai_token}...')
-            url = f"{character_ai_endpoint}/authenticateToken?token={character_ai_token}"
-        else:
-            log_message(f'Authenticating character-ai as guest...')
-            url = f"{character_ai_endpoint}/authenticate"
-        print(f"Sending POST request to: {url}")
+        client = Client() #New CharacterAI client!
         try:
-            response = send_request_with_retry(url)
-            print(f'response: {response}')
-            global character_id
-            characterai_set_character(
-                character_id)
-        except requests.exceptions.Timeout:
-            log_message(
-                "Request timed out. May be caused by a queue at character-ai servers.")
+            log_message(f'setting character_id to: {character_id}')
+            print('Authenticating...')
+            await client.authenticate(token=character_ai_token)
+            me = await client.account.fetch_me()
+            print(f"Authenticated as @{me.username}")
+            if chat is None:
+                chat_obj, greeting_message = await client.chat.create_chat(character_id)
+                chat = chat_obj
+                print(f"{greeting_message.author_name}: {greeting_message.get_primary_candidate().text}")
+            return
+        except SessionClosedError as e:
+            log_message(f"Error in authenticating your account! Error: {e}")
+    return
 
 
 def change_chat_model(model):
     global chat_model
     chat_model = model
-    initialize()
+    future = asyncio.run_coroutine_threadsafe(
+        initialize(),
+        main_asyncio_loop
+    )
+    return future.result()
 
-
-def send_request_with_retry(url, max_retries=20, retry_delay=2, timeout=5):
-    retries = 0
-    while retries < max_retries:
-        try:
-            response = requests.request(
-                'POST', url, timeout=timeout)
-            # Process the response as needed
-            return response
-        except requests.exceptions.Timeout:
-            raise requests.exceptions.Timeout
-        except:
-            print("Waiting for character-ai server to start. Retrying in {} seconds...".format(
-                retry_delay))
-            time.sleep(retry_delay)
-            retries += 1
-    # If all retries fail, raise an exception or handle the error accordingly
-    raise Exception(
-        "Failed to establish a connection with the server after multiple attempts.")
-
-
-def characterai_set_character(characterid):
-    log_message(f'setting character_id to: {characterid}')
-    url = f"{character_ai_endpoint}/setCharacter?characterId={characterid}"
-    print(f"Sending POST request to: {url}")
-    response = requests.request(
-        "POST", url)
-    print(f'response: {response}')
-
-
-def send_user_input(user_input):
+async def send_user_input(user_input):
     global message_log
     global openai_api_key
     if (chat_model == "GPT"):
         log_message(f"GPTuser: {user_input}")
-        
-        if (openai_api_key == ''):
-            openai_api_key = os.getenv("OPENAI_API_KEY")
+        client_ = OpenAI(api_key=openai_api_key) # Instantiate via the new OpenAI client method.
 
-        openai.api_key = openai_api_key
         print(f"Sending: {user_input}")
         message_log.append({"role": "user", "content": user_input})
         print(message_log)
@@ -111,36 +92,29 @@ def send_user_input(user_input):
                                for message in message_log)
         print(f"total_characters: {total_characters}")
         while total_characters > character_limit and len(message_log) > 1:
-            print(
-                f"total_characters {total_characters} exceed limit of {character_limit}, removing oldest message")
+            print(f"total_characters {total_characters} exceed limit of {character_limit}, removing oldest message")
             total_characters -= len(message_log[1]["content"])
             message_log.pop(1)
 
-        response = None
         try:
-            response = openai.ChatCompletion.create(
+            completion = client_.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=message_log
             )
-        except Exception:
-            log_message("Error when loading api key from environment variable")
-            log_message(
-                "You need an API key from https://platform.openai.com/ stored in an environment variable with name \"OPENAI_API_KEY\" to use the chat feature")
-            print(traceback.format_exc())
+        except Exception as e:
+            log_message("Error during OpenAI API call")
+            log_message(str(e))
             return
-        text_response = response['choices'][0]['message']['content']
-        message_log.append({"role": "assistant", "content": text_response})
-        log_message(f'AI: {text_response}')
+        text = completion.choices[0].message.content
+        message_log.append({"role": "assistant", "content": text})
+        log_message(f'AI: {text}')
         with open(AI_RESPONSE_FILENAME, "w", encoding="utf-8") as file:
-            separated_text = separate_sentences(text_response)
+            separated_text = separate_sentences(text)
             file.write(separated_text)
-        STTS.start_TTS_pipeline(text_response)
+        return text
     elif (chat_model == "GPT_proxy(china only)"):
         log_message(f"GPTuser: {user_input}")
-        if (openai_api_key == ''):
-            openai_api_key = os.getenv("OPENAI_API_KEY")
-
-        openai.api_key = openai_api_key
+        client_ = OpenAI(api_key=openai_api_key)
         print(f"Sending: {user_input}")
         message_log.append({"role": "user", "content": user_input})
         print(message_log)
@@ -175,21 +149,21 @@ def send_user_input(user_input):
         with open(AI_RESPONSE_FILENAME, "w", encoding="utf-8") as file:
             separated_text = separate_sentences(text_response)
             file.write(separated_text)
-        STTS.start_TTS_pipeline(text_response)
+        return text_response
     elif (chat_model == "CHARACTER_AI"):
+        global chat
         log_message(f'user: {user_input}')
-        url = f"{character_ai_endpoint}/sendChat?text={user_input}"
-        print(f"Sending POST request to: {character_ai_endpoint}")
-        response = requests.request(
-            "POST", url)
-        print(f'response: {response}')
-        response_json = json.loads(response.text)
-        text = response_json['text']
-        log_message(f'AI: {text}')
+        if chat is None:
+            print("Chat session failed!")
+            return
+        turn = await client.chat.send_message(character_id, chat.chat_id, user_input)
+        text_response = turn.get_primary_candidate().text
+        print(f"[{turn.author_name}]: {text_response}")
+        log_message(f'{turn.author_name}: {text_response}')
         with open(AI_RESPONSE_FILENAME, "w", encoding="utf-8") as file:
-            separated_text = separate_sentences(text)
+            separated_text = separate_sentences(text_response)
             file.write(separated_text)
-        STTS.start_TTS_pipeline(text)
+        return text_response
     elif (chat_model == "oogabooga_webui"):
         run_webui(user_input, history_webui)
 
@@ -269,6 +243,25 @@ def run_webui(user_input, history):
             file.write(separated_text)
         STTS.start_TTS_pipeline(text_response)
 
+def queue_watcher(): # NEW message queue system so the system does not override itself following FIFO
+    while True:
+        user_input = message_queue.get()
+        if user_input is None:
+            break
+        try:
+            future = asyncio.run_coroutine_threadsafe(
+                send_user_input(user_input),
+                main_asyncio_loop
+            )
+            text_response = future.result()
+            STTS.start_TTS_pipeline(text_response)
+        except Exception as e:
+            import traceback
+            print(f"Error processing message: {e}")
+            traceback.print_exc()
+
+worker_thread = threading.Thread(target=queue_watcher, daemon=True)
+worker_thread.start()
 
 def log_message(message_text):
     print(message_text)
