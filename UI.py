@@ -2,7 +2,7 @@ import json
 from threading import Thread
 import customtkinter
 import keyboard
-import pyaudio
+import asyncio
 import STTSLocal as STTS
 from threading import Event
 from enum import Enum
@@ -304,9 +304,8 @@ class ChatFrame(customtkinter.CTkFrame):
     def send_user_input(self):
         text = self.user_input_var.get()
         self.user_input_var.set('')
-        thread = Thread(target=chatbot.send_user_input, args=[text,])
-        thread.start()
-
+        chatbot.message_queue.put(text)
+        
     def log_message_on_console(self, message_text):
         # insert at line 0 character 0
         self.textbox.configure(state="normal")
@@ -1285,10 +1284,8 @@ class App(customtkinter.CTk):
                 chatPage.show()
         pageChange_eventhandlers.append(showPage)
 
-
 def optionmenu_callback(choice):
     print("optionmenu dropdown clicked:", choice)
-
 
 def initialize_audio_devices():
     global hostapis
@@ -1296,16 +1293,15 @@ def initialize_audio_devices():
     global audio_devices
     audio_devices = sd.query_devices()
 
-
 hostapis = None
 audio_devices = None
 
 print("Starting voicevox server...")
 STTS.start_voicevox_server()
 print("Starting character ai server...")
-STTS.start_characterai_server()
-print("initializing chatbot...")
-chatbot.initialize()
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+loop.run_until_complete(chatbot.initialize())
 print("Initializing tts model...")
 STTS.initialize_model()
 print("Initializing translator...")
@@ -1316,7 +1312,6 @@ print("loading config... ")
 STTS.load_config()
 print("loading settings... ")
 settings.load_settings()
-
 
 app = App()
 app.configure(background='#fafafa')

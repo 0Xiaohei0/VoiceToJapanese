@@ -28,7 +28,6 @@ def load_config():
     try:
         with open("config.json", "r") as json_file:
             data = json.load(json_file)
-            print(data)
 
             translator.deepl_api_key = data['deepl_api_key']
             translator.use_deepl = data['use_deepl']
@@ -54,14 +53,12 @@ def load_config():
         print("Unable to load JSON file.")
         print(traceback.format_exc())
 
-
 def save_config(key, value):
     config = None
     try:
         with open("config.json", "r") as json_file:
             config = json.load(json_file)
             config[key] = value
-            print(f"config[{key}] = {value}")
         with open("config.json", "w") as json_file:
             json_object = json.dumps(config, indent=4)
             json_file.write(json_object)
@@ -74,7 +71,7 @@ input_device_id = None
 output_device_id = None
 
 VOICE_VOX_URL_HIGH_SPEED = "https://api.su-shiki.com/v2/voicevox/audio/"
-VOICE_VOX_URL_LOW_SPEED = "https://api.tts.quest/v1/voicevox/"
+VOICE_VOX_URL_LOW_SPEED = "https://api.tts.quest/v3/voicevox/synthesis"
 VOICE_VOX_URL_LOCAL = "127.0.0.1"
 
 VOICE_OUTPUT_FILENAME = "audioResponse.wav"
@@ -86,7 +83,7 @@ use_cloud_voice_vox = False
 voice_vox_api_key = ''
 speakersResponse = None
 voicevox_server_started = False
-speaker_id = 1
+speaker_id = 3
 mic_mode = 'open mic'
 MIC_OUTPUT_FILENAME = "PUSH_TO_TALK_OUTPUT_FILE.wav"
 PUSH_TO_RECORD_KEY = '5'
@@ -101,8 +98,6 @@ pipeline_timer = Timer()
 step_timer = Timer()
 model = None
 
-characterai_server_file_path = 'characterai_server.js'
-
 ambience_adjusted = False
 
 
@@ -116,36 +111,8 @@ def start_voicevox_server():
     if (voicevox_server_started):
         return
     # start voicevox server
-    subprocess.Popen("VOICEVOX\\run.exe")
+    subprocess.Popen("VOICEVOX\\vv-engine\\run.exe")
     voicevox_server_started = True
-
-
-def start_characterai_server():
-    global characterai_server_file_path
-    server_thread = Thread(target=run_javascript_file,
-                           args=(characterai_server_file_path,))
-    server_thread.start()
-
-
-def capture_output(process):
-    for line in process.stdout:
-        print(f"CHARACTER_AI_SERVER: {line.decode().strip()}")
-
-    for line in process.stderr:
-        print(f"CHARACTER_AI_SERVER: {line.decode().strip()}")
-
-
-def run_javascript_file(file_path):
-    try:
-        process = subprocess.Popen(
-            ['node', file_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output_thread = Thread(target=capture_output, args=(process,))
-        output_thread.start()
-        process.wait()
-        output_thread.join()
-    except FileNotFoundError:
-        print("Node.js is not installed or the file path is invalid.")
-
 
 def initialize_speakers():
     global speakersResponse
@@ -181,6 +148,36 @@ def get_speaker_styles(speaker_name):
     print(speaker_styles)
     return speaker_styles
 
+def download_wav_file(wav_url, filename):
+    r = requests.get(wav_url, stream=True)
+    if r.status_code == 200 and r.headers.get('Content-Type', '').startswith('audio'):
+        with open(filename, 'wb') as f:
+            for chunk in r.iter_content(4096):
+                f.write(chunk)
+        print("Audio file saved.")
+        return True
+    else:
+        print("Download did not return an audio file!")
+        return False
+    
+def wait_for_audio(audio_status_url, max_wait=10):
+    waited = 0
+    while waited < max_wait:
+        status_resp = requests.get(audio_status_url)
+        try:
+            status_data = status_resp.json()
+            if status_data.get('isAudioReady'):
+                return True
+            if status_data.get('isAudioError'):
+                print("Audio generation failed.")
+                return False
+        except Exception as e:
+            print(f"Failed to parse audio status: {e}")
+            return False
+        time.sleep(1)
+        waited += 1
+    print("Timed out waiting for audio.")
+    return False
 
 recording = False
 auto_recording = False
@@ -223,40 +220,46 @@ def stop_record_auto():
 def cloud_synthesize(text, speaker_id, api_key=''):
     global pipeline_elapsed_time
     url = ''
-    if (api_key == ''):
+    new_text = text.replace('"', '').replace("'", "").strip()
+    if api_key == '':
         print('No api key detected, sending request to low speed server.')
-        url = f"{VOICE_VOX_URL_LOW_SPEED}?text={text}&speaker={speaker_id}"
+        url = f"{VOICE_VOX_URL_LOW_SPEED}?text={new_text}&speaker={speaker_id}"
     else:
-        print(
-            f'Api key {api_key} detected, sending request to high speed server.')
-        url = f"{VOICE_VOX_URL_HIGH_SPEED}?text={text}&speaker={speaker_id}&key={api_key}"
+        print(f'Api key {api_key} detected, sending request to high speed server.')
+        url = f"{VOICE_VOX_URL_HIGH_SPEED}?text={new_text}&speaker={speaker_id}&key={api_key}"
     print(f"Sending POST request to: {url}")
-    response = requests.request(
-        "POST", url)
+    response = requests.post(url)
     print(f'response: {response}')
-    # print(f'response.content: {response.content}')
-    wav_bytes = None
-    if (api_key == ''):
+    if api_key == '':
         response_json = response.json()
-        # print(response_json)
-
-        try:
-            # download wav file from response
-            wav_url = response_json['wavDownloadUrl']
-        except:
-            print("Failed to get wav download link.")
+        if not response_json.get("success"):
+            print("Synthesis API did not succeed.")
             print(response_json)
-            return
-        print(f"Downloading wav response from {wav_url}")
-        wav_bytes = requests.get(wav_url).content
+            return False
+        audio_status_url = response_json.get('audioStatusUrl')
+        wav_url = response_json.get('wavDownloadUrl')
+        if not audio_status_url or not wav_url:
+            print("Missing audioStatusUrl or wavDownloadUrl.")
+            return False
+        if not wait_for_audio(audio_status_url):
+            print("Audio file was not ready.")
+            return False
+        # Download the audio file
+        if not download_wav_file(wav_url, VOICE_OUTPUT_FILENAME):
+            print("Failed to save audio file.")
+            return False
     else:
-        wav_bytes = response.content
+        if response.status_code == 200 and 'audio' in response.headers.get('Content-Type', ''):
+            wav_bytes = response.content
+            with open(VOICE_OUTPUT_FILENAME, "wb") as file:
+                file.write(wav_bytes)
+        else:
+            print("Did not receive audio data from high speed server!")
+            return False
 
-    with open(VOICE_OUTPUT_FILENAME, "wb") as file:
-        file.write(wav_bytes)
+    return True
 
-
-def syntheize_audio(text, speaker_id):
+def synthesize_audio(text, speaker_id):
     global use_cloud_voice_vox, voice_vox_api_key
     global use_elevenlab
     if (use_elevenlab):
@@ -279,19 +282,22 @@ def local_synthesize(text, speaker_id):
 
 
 def elevenlab_synthesize(message):
-
     global elevenlab_api_key
-    url = f'https://api.elevenlabs.io/v1/text-to-speech/{elevenlab_voiceid}'
+    url = f'https://api.elevenlabs.io/v1/text-to-speech/{elevenlab_voiceid}/stream'
     headers = {
-        'accept': 'audio/mpeg',
+        'accept': '*/*',
         'xi-api-key': elevenlab_api_key,
         'Content-Type': 'application/json'
     }
     data = {
         'text': message,
+        'model_id': "eleven_multilingual_v1",
         'voice_settings': {
             'stability': 0.75,
-            'similarity_boost': 0.75
+            'similarity_boost': 0.75,
+            'style': .75, # Available on Multilingual models
+            'use_speaker_boost': True, # Boost the similarity of the synthesized speech and the voice at the cost of some generation speed.
+            "speed": 1.0  # If you plan to use speed later
         }
     }
     print(f"Sending POST request to: {url}")
@@ -300,9 +306,6 @@ def elevenlab_synthesize(message):
     audio_content = AudioSegment.from_file(
         io.BytesIO(response.content), format="mp3")
     audio_content.export(VOICE_OUTPUT_FILENAME, 'wav')
-    # with open(VOICE_OUTPUT_FILENAME, "wb") as file:
-    #     file.write(audio_content.)
-
 
 def PlayAudio():
     # voiceLine = AudioSegment.from_wav(VOICE_OUTPUT_FILENAME)
@@ -392,8 +395,11 @@ def start_STTS_loop_chat():
     while auto_recording:
         start_STTS_pipeline(use_chatbot=True)
 
+import asyncio
 
 def start_STTS_pipeline(use_chatbot=False):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     global pipeline_elapsed_time
     global step_timer
     global pipeline_timer
@@ -461,7 +467,7 @@ def start_STTS_pipeline(use_chatbot=False):
     pipeline_elapsed_time += pipeline_timer.end()
     if (use_chatbot):
         log_message("recording compelete, sending to chatbot")
-        chatbot.send_user_input(input_text)
+        loop.run_until_complete(chatbot.message_queue.put(input_text))
     else:
         start_TTS_pipeline(input_text)
 
@@ -493,6 +499,8 @@ def start_TTS_pipeline(input_text):
         step_timer.start()
         input_processed_text = translator.translate(
             input_text, inputLanguage, outputLanguage)
+        if outputLanguage == 'ja':
+            input_processed_text = input_processed_text.replace(' ', '')
         log_message(
             f'Translation: {input_processed_text} ({step_timer.end()}s)')
     else:
@@ -507,7 +515,7 @@ def start_TTS_pipeline(input_text):
     with open("translation.txt", "w", encoding="utf-8") as file:
         file.write(filtered_text)
     step_timer.start()
-    syntheize_audio(
+    synthesize_audio(
         filtered_text, speaker_id)
     log_message(
         f"Speech synthesized for text [{filtered_text}] ({step_timer.end()}s)")
@@ -543,16 +551,14 @@ def playOriginal():
         last_input_text_processed = last_input_text
     text_ja = romajitable.to_kana(last_input_text_processed).katakana
     text_ja = text_ja.replace('・', '')
-    syntheize_audio(text_ja, last_voice_param)
+    synthesize_audio(text_ja, last_voice_param)
     log_message(f'playing input: {text_ja}')
-
 
 def log_message(message_text):
     print(message_text)
     global logging_eventhandlers
     for eventhandler in logging_eventhandlers:
         eventhandler(message_text)
-
 
 def change_input_language(input_lang_name):
     global input_language_name

@@ -3,6 +3,7 @@ import traceback
 import pytchat
 import chatbot
 import time
+import keyboard
 from twitchio.ext import commands
 from threading import Thread
 
@@ -38,24 +39,24 @@ def read_chat_youtube():
 
 
 def read_chat_loop(chat):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     log_message("Chat fetching started")
     global read_chat_youtube_thread_running
     while read_chat_youtube_thread_running and chat.is_alive():
         for c in chat.get().sync_items():
             if c.author.name not in excluded_users_list:
                 log_message(f"{c.datetime} [{c.author.name}]- {c.message}")
-                chatbot.send_user_input(c.message)
+                loop.run_until_complete(chatbot.message_queue.put(c.message))
                 # print(response)
                 time.sleep(1)
     log_message("Chat fetching ended")
-
 
 def stop_read_chat_youtube():
     log_message("stopping chat fetching...")
     global read_chat_youtube_thread_running
     read_chat_youtube_thread_running = False
     print("Process stopped.")
-
 
 class Bot(commands.Bot):
 
@@ -67,6 +68,17 @@ class Bot(commands.Bot):
         # Function to reload the excluded users from the file
         reload_thread = Thread(target=self.reload_excluded_users)
         reload_thread.start()
+
+        keyboard.add_hotkey("ctrl+n", self.stop_read_chat_twitch)
+        keyboard.add_hotkey("alt+3", self.resume_chat)
+
+    def stop_read_chat_twitch(self):
+        log_message("Pausing Chat...")
+        self.pause_chat = True
+
+    def resume_chat(self):
+        log_message("Resuming Chat...")
+        self.pause_chat = False
 
     def reload_excluded_users(self):
         while True:
@@ -91,12 +103,14 @@ class Bot(commands.Bot):
         # For now we just want to ignore them...
         if message.echo:
             return
-
+        if self.pause_chat:
+            return
+        
         # Print the contents of our message to console...
         if message.author.name not in excluded_users_list:
             print(message)
             log_message(message.content)
-            chatbot.send_user_input(message.content)
+            await chatbot.message_queue.put(message.content)
 
         # Since we have commands and are overriding the default `event_message`
         # We must let the bot know we want to handle and invoke our commands...
